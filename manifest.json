@@ -1,0 +1,24 @@
+{
+    "manifest_version": 3,
+    "name": "Superbill Generator for AXIS",
+    "description": "Automatically generate a superbill in AXIS.",
+    "version": "1.0",
+    "action": {
+        "default_icon": "axis_extension.png",
+        "default_title": "AXIS Superbill",
+        "default_popup": "popup.html"
+    },
+    "content_scripts": [
+        {
+            "js": ["content.js"],
+            "css": ["content.css"],
+            "matches": [
+            "https://axis.thejoint.com/*"
+            ]
+        }
+    ],
+    "permissions": ["activeTab", "scripting"],
+    "background":{
+        "service_worker": "background.js"
+    }
+}
