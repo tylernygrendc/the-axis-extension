@@ -1,3 +1,11 @@
+class Client {
+    constructor(){
+        this[oauth] = localStorage.getItem("prod:SugarCRM:AuthAccessToken").toString().split(`"`)[1];
+    }
+    getCurrentResource(url){
+        return url.split("#")[1].split("/")[0].toString();
+    }
+}
 class Child {
     constructor(tag="div"){
         this.tag = tag;
@@ -41,121 +49,97 @@ class Child {
     }
 }
 
-// list for user input from extension popup
-chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-    // let req = JSON.parse(request);
-    let visits = getVisits();
-    // TODO: sendResponse({data: data, success: true});
+class Patient {
+    constructor(){
+        this[id] = this.getPatientId(window.location.href),
+        this[fname] = this.#nameArray[0],
+        this[lname] = this.#nameArray[1]
+    }
+    #nameArray = this.getNameFromAXIS()
+    getNameFromAXIS(){
+        let name = document.querySelector(`h1 .record-cell[data-type=fullname] .table-cell-wrapper 
+                .index span .record-cell[data-type=fullname] .ellipsis_inline`);
+        let nameArray = name.innerText.split(" ");
+    
+        // remove any shenanigans
+        nameArray.forEach((name, i) => {
+            if(name.toLowerCase() === "see notes" || name.charAt(0) === `"`) nameArray.splice(i, 1);
+        });
+    
+        if(nameArray.length > 2){
+            // consolidate multiple last names
+            // TODO: add an option to change how multiple last names are dealt with
+            let lastNames = "";
+            for(let i = 0; i < nameArray.length; ++i){
+                if(i === 1) lastNames += `${nameArray[i]}`;
+                // don't forget spacing
+                if(i > 1) lastNames += ` ${nameArray[i]}`;
+            }
+            // update nameArray to reflect changes
+            nameArray = [nameArray[0], lastNames];
+        }
+    
+        // return name as object
+        return {firstName: nameArray[0], lastName: nameArray[1]};
+    }
+    getPatientId(url){
+        let active = {
+            resource: url.split("#")[1].split("/")[0].toString(),
+            isProfile: url.split("#")[1].split("/")[0].toString() === "Contact" ? true : false,
+            patientId: url.split("/")[2].toString()
+        };
+        if(active.isProfile) return active.patientId;
+        else throw new Error(`Expected location of https://axis.thejoint.com/#Contacts. Location is set to https://axis.thejoint.com/#${active.resource}instead.`);
+    }
+}
+
+// listen for user input from extension popup
+chrome.runtime.onMessage.addListener(function(message, sender, response) {
+    message = JSON.parse(message);
 });
 
-function isProfileOf(firstName, lastName){
-    // check if url includes the "Contacts" anchor
-    const anchor = getAnchor(window.location.href);
-    if(anchor === "Contacts"){
-        // if yes, get the patient's first and last name from h1
-        let patient = getNameFromAXIS();
-    }
-    // does the current profile and desired patient match?
-    if(patient.firstName === firstName && patient.lastName === lastName){
-        // if yes, return true
-        return true;
-    } else {
-        // TODO: send an error to the popup
-        return false;
-    }
-}
-
-function getAnchor(url){
-    return url.split("#")[1].split("/")[0].toString();
-}
-
-function getContactId(url){
-    return url.split("/")[2].toString();
-}
-
-function getNameFromAXIS(){
-    let name = document.querySelector(`h1 .record-cell[data-type=fullname] .table-cell-wrapper 
-            .index span .record-cell[data-type=fullname] .ellipsis_inline`);
-    let nameArray = name.innerText.split(" ");
-
-    // remove any shenanigans
-    nameArray.forEach((name, i) => {
-        if(name.toLowerCase() === "see notes" || name.charAt(0) === `"`) nameArray.splice(i, 1);
-    });
-
-    if(nameArray.length > 2){
-        // consolidate multiple last names
-        // TODO: add an option to change how multiple last names are dealt with
-        let lastNames = "";
-        for(let i = 0; i < nameArray.length; ++i){
-            if(i === 1) lastNames += `${nameArray[i]}`;
-            // don't forget spacing
-            if(i > 1) lastNames += ` ${nameArray[i]}`;
-        }
-        // update nameArray to reflect changes
-        nameArray = [nameArray[0], lastNames];
-    }
-
-    // return name as object
-    return {firstName: nameArray[0], lastName: nameArray[1]};
-}
-
-function getVisits(patient = {}, query={}){
-    // make sure you are getting the correct patient information
-    // TODO: don't let this default to "true" in production
-    if(isProfileOf() || true){
-        // if it's the right patient, find the transaction history and visit history in their profile
-        let tables = document.querySelectorAll(`.main-content .subpanels-layout .subpanel .flex-list-view 
-                .flex-list-view-container .flex-list-view-content table`);
-    }
-}
-
-function subpanelIndex(subpanel=""){
-    let headers = document.querySelectorAll("h4");
-    headers.forEach((header, i) => { 
-        if(header.innerText === subpanel.toString()) return i;
-    });
-    throw new Error("Subpanel does not exist.");
-}
-
-function parseTable(element){
-    // it will be helpful to store column headers and rows separately
-    let rows = [];
-    let headers = [];
-    // populate headers array with data from AXIS
-    element.querySelectorAll(`thead tr th .sortable-row-header-container .sortable-row-header-column-name`).forEach(element => {
-        headers.push(element.innerText());
-    });
-    // populate rows array with data from AXIS
-    element.querySelectorAll(`tbody tr`).forEach(tr => {
-        let row = [];
-        // get the data from each row
-        tr.querySelectorAll(`td span .ellipsis_inline`).forEach(td => {
-            row.push(td.innerText());
-        });
-        // add each row to the rows array
-        rows.push(row);
-    });
-    // create an array of row objects where key = th and value = td
-    let data = [];
-    rows.forEach(row => {
-        let i = 0, obj = {};
-        for(const td in row){
-            obj[headers[i++]] = td;
-        }
-        data.push(obj);
-    });
-    return data;
-}
-
-async function readTransactionsFrom(contactURL="", startDate=Date, endDate=Date){
-    let req = new Request(`https://axis.thejoint.com/rest/v11_20/Contacts/${getContactId(contactURL)}/custom_link/contacts_transactions_refunds?filter%5B0%5D%5Bdate_entered%5D%5B%24dateBetween%5D%5B%5D=${startDate}&filter%5B0%5D%5Bdate_entered%5D%5B%24dateBetween%5D%5B%5D=${endDate}`);
+async function readTransactionsFrom(year = Number){
     try{
-        await fetch(req);
-    } catch (err){
-        console.log(err);
-        return err;
+        // validate year parameter
+        let isValid = false, validYears = [], currentYear = new Date().getFullYear();
+        for(let i = 1999; i <= currentYear; ++i) validYears.push(i);
+        if(typeof year === "number" && validYears.includes(year)) { isValid = true }
+        else {
+            throw new Error(`${typeof year != "number" ?
+            `Function validateYear() requires parameter type of number. Received type of ${typeof year} instead.`:
+            `Value of year parameter at function validateYear() is invalid.`}`);
+        }
+        // request transaction history from year
+        let response = await fetch(new Request(`https://axis.thejoint.com/rest/v11_20/Contacts/${ getContactId(window.location.href) }/custom_link/contacts_transactions_refunds?filter%5B0%5D%5Bdate_entered%5D%5B%24dateBetween%5D%5B%5D=01-01-${ year - 1 }&filter%5B0%5D%5Bdate_entered%5D%5B%24dateBetween%5D%5B%5D=01-01-${ year }`), { headers: {"Oauth-Token": Client.oauth} });
+        // process and return response
+        if(response.ok) return await response.json() 
+        else throw new Error(`Server response at readTransactionsFrom() returned "${response.status}: ${response.statusText}."`);
+    } catch (error){
+        console.log(error);
+        return error;
     }
-    return res;
 }
-
+async function readVisits(quantity = Number){
+    try{
+        // validate quantity parameter
+        if(typeof quantity != "number") 
+            throw new Error(`Function readRecentVisits() requires parameter type of number. Received type of ${typeof quantity} instead.`);
+        // request quantity of visit records
+        let response = await fetch(new Request(`https://axis.thejoint.com/rest/v11_20/Contacts/${getContactId(window.location.href)}/link/contacts_tj_visits_1?erased_fields=true&view=subpanel-for-contacts-contacts_tj_visits_1&fields=date_entered%2Cstatus%2Chas_carecard%2Cmy_favorite&max_num=${quantity}&order_by=date_entered%3Adesc&filter%5B0%5D%5Bstatus%5D=Completed`), { headers: {"Oauth-Token": Client.oauth} });
+        // get visit data for each visit
+        let visits = await response.json();
+        if(response.ok) {
+            if(Array.isArray(visits)){
+                let i = 0;
+                for(const visit in visits){
+                    let res = await fetch(new Request(`https://axis.thejoint.com/rest/v11_20/TJ_Visits/${ visit.id }?erased_fields=true&view=record&fields=date_entered%2Cstatus%2Chas_carecard&viewed=1`), { headers: {"Oauth-Token": Client.oauth} });
+                    visits.splice(++i, 1, await res.json());
+                }
+            } else { throw new Error(`Expected server response type of array but received type of ${typeof visits} instead.`); }
+        } else { throw new Error(`Server response at readTransactionsFrom() returned "${response.status}: ${response.statusText}."`); }
+        return visits;
+    } catch (error){
+        console.log(error);
+        return error;
+    }
+}
