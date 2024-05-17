@@ -1,3 +1,292 @@
-:root {
-    --system-ui: system-ui, "Segoe UI", Helvetica, Arial, sans-serif;
+.axis-extension-surface {
+  /* variable declaration */
+  --typeface: system-ui, "Segoe UI", Helvetica, Arial, sans-serif;
+  --surface-color: #ffffff;
+  --surface-contrast: #000000;
+  --on-surface: #505050;
+  --primary-color: #00b3be;
+  --on-primary: #ffffff;
+  --secondary-color: #ffb612;
+  --error-color: #d50101;
+  --success-color: rgb(0, 50, 0);
+  --transition-on-hover: 250ms;
+  --transition-on-hide: 500ms;
+  --surface-corner: 1rem;
+  --surface-shadow: 0px 1px 2px 0px hsl(0 0 0 / 0.2);
+
+  /* surface styles */
+  background-color: var(--surface-color);
+  color: var(--on-surface);
+
+  /* typography */
+  & .typescale--display {
+    font-family: var(--typeface);
+    font-size: 2.8rem;
+    font-weight: 400;
+    text-shadow: none;
+    text-transform: none;
+    text-decoration: none;
+    letter-spacing: normal;
+    line-height: 3.25rem;
+  }
+  & .typescale--headline {
+    font-family: var(--typeface);
+    font-size: 1.75rem;
+    font-weight: 400;
+    text-shadow: none;
+    text-transform: none;
+    text-decoration: none;
+    letter-spacing: normal;
+    line-height: 2.25rem;
+  }
+  & .typescale--title {
+    font-family: var(--typeface);
+    font-size: 1rem;
+    font-weight: 500;
+    text-shadow: none;
+    text-transform: none;
+    text-decoration: none;
+    letter-spacing: normal;
+    line-height: 1.5rem;
+  }
+  & .typescale--body {
+    font-family: var(--typeface);
+    font-size: 0.875rem;
+    font-weight: 400;
+    text-shadow: none;
+    text-transform: none;
+    text-decoration: none;
+    letter-spacing: normal;
+    line-height: 1.25rem;
+  }
+  & .typescale--label {
+    font-family: var(--typeface);
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-shadow: none;
+    text-transform: none;
+    text-decoration: none;
+    letter-spacing: normal;
+    line-height: 1rem;
+  }
+}
+
+/* standalone text nodes */
+
+.modal-label {
+  position: absolute;
+  inset: 0.75rem auto auto 1rem;
+  font-family: var(--typeface);
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-shadow: none;
+  text-transform: none;
+  text-decoration: none;
+  letter-spacing: normal;
+  line-height: 1rem;
+}
+
+/* buttons */
+
+.button {
+  position: relative;
+  padding: 0.5rem 1rem;
+  background-color: inherit;
+  box-shadow: none;
+  border: 0;
+  border-radius: var(--surface-corner);
+  overflow: hidden;
+
+  /* button styles */
+  &.surface-button {
+    background: var(--primary-color);
+    color: var(--on-primary);
+  }
+  &.outlined-button .button__state {
+    background: inherit;
+    color: var(--primary-color);
+    border: solid 0.0625rem var(--on-surface);
+  }
+
+  /* child elements */
+  & .button__label {
+    z-index: 2;
+    position: relative;
+    font-family: var(--typeface);
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-shadow: none;
+    text-transform: none;
+    text-decoration: none;
+    letter-spacing: normal;
+    line-height: 1rem;
+    white-space: nowrap;
+  }
+  & .button__state {
+    z-index: 1;
+    position: absolute;
+    inset: 0;
+    opacity: 0%;
+    background-color: var(--surface-contrast);
+  }
+
+  /* on hover, on focus */
+  &:hover,
+  &:focus-visible,
+  & *:hover,
+  & *:focus-visible {
+    .button__state {
+      transition: var(--transition-on-hover);
+      opacity: 10%;
+    }
+  }
+
+  /* standalone buttons */
+  &.close-modal {
+    position: absolute;
+    inset: 0.5rem 0.5rem auto auto;
+    border-radius: 50%;
+    padding: 0.75rem;
+    & .button__label::before {
+      position: absolute;
+      inset: 50% auto auto 50%;
+      translate: -50% -50%;
+      content: "\2715";
+    }
+  }
+}
+
+/* text fields */
+
+.text-field {
+  z-index: 0;
+  position: relative;
+  margin: 1rem 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+  gap: 1rem;
+  border: 0.125rem solid var(--on-surface);
+  border-radius: 0.25rem;
+  background-color: inherit;
+  color: var(--on-surface);
+  cursor: text;
+  &:has(.text-field__hint) {
+    margin-bottom: 2rem;
+  }
+  .text-field--error {
+    border-color: var(--error-color);
+    color: var(--error-color);
+  }
+  .text-field--success {
+    border-color: var(--success-color);
+    color: var(--success-color);
+  }
+  &.text-field__label {
+    position: absolute;
+    z-index: 1;
+    inset: 0 auto auto 0.5rem;
+    translate: 0% -50%;
+    padding: 0.25rem;
+    background-color: inherit;
+    color: var(--on-surface);
+  }
+  &.text-field__input {
+    border-width: 0;
+    border-radius: 0;
+    background-color: transparent;
+    caret-color: var(--primary-color);
+    color: var(--on-surface);
+    resize: none;
+    &:focus {
+      outline: 0;
+    }
+  }
+  input {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  textarea {
+    display: block;
+    width: 100%;
+    height: 100%;
+    line-height: 1.5;
+  }
+  .text-field__hint {
+    position: absolute;
+    inset: calc(100% + 0.5rem) 0 auto 0;
+    overflow: hidden;
+    color: var(--on-surface);
+  }
+  &:focus-within {
+    outline: 0.175rem solid var(--primary-color);
+    outline-offset: -0.175rem;
+    .text-field__label {
+      color: var(--primary-color);
+    }
+  }
+}
+
+/* core components, layout */
+
+#extension-dialog {
+  z-index: 1033;
+  position: fixed;
+  inset: 1rem 1rem auto auto;
+  min-width: 22.5rem;
+  min-height: 3.25rem;
+  padding: 2.5rem 1rem 0.5rem 1rem;
+  border-radius: var(--surface-corner);
+  box-shadow: var(--surface-shadow);
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  gap: 0.5rem;
+}
+
+#extension-sheet {
+  z-index: 1033;
+  position: fixed;
+  inset: 0 0 0 auto;
+  min-width: 24.5rem;
+  min-height: 100svh;
+  padding: 1rem;
+  border-radius: var(--surface-corner) 0 0 var(--surface-corner);
+  box-shadow: var(--surface-shadow);
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  gap: 0.5rem;
+}
+
+#extension-snackbar {
+  z-index: 1033;
+  position: fixed;
+  inset: auto 1rem 1rem auto;
+  min-width: 22.5rem;
+  min-height: 3.25rem;
+  padding: 1rem 1rem 0.5rem 1rem;
+  border-radius: var(--surface-corner);
+  box-shadow: var(--surface-shadow);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* animation */
+
+.hide,
+.hidden {
+  transition: var(--transition-on-hide);
+  opacity: 0%;
+  display: none;
+}
+
+.show,
+.visible {
+  display: block;
+  opacity: 100%;
 }
