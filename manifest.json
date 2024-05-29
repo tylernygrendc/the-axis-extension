@@ -2,7 +2,7 @@
     "manifest_version": 3,
     "name": "Superbill Generator for AXIS",
     "description": "Automatically generate a superbill in AXIS.",
-    "version": "1.0",
+    "version": "0.10",
     "action": {
         "default_icon": "axis_extension.png",
         "default_title": "AXIS Extension"

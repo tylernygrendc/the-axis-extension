@@ -18,6 +18,27 @@
   background-color: var(--surface-color);
   color: var(--on-surface);
 
+  /* reset defaults */
+  div{
+    background-color: inherit;
+  }
+
+  /* common block classes */
+
+  .flex-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.25rem;
+    & > *{
+      flex: 1;
+    }
+  }
+
+  .width--full{
+    width: 100%;
+  }
+
   /* typography */
   & .typescale--display {
     font-family: var(--typeface);
@@ -161,11 +182,11 @@
 .text-field {
   z-index: 0;
   position: relative;
-  margin: 1rem 0;
+  margin: 0.5rem 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 1rem;
+  padding: 0.5rem;
   gap: 1rem;
   border: 0.125rem solid var(--on-surface);
   border-radius: 0.25rem;
@@ -175,15 +196,15 @@
   &:has(.text-field__hint) {
     margin-bottom: 2rem;
   }
-  .text-field--error {
+  &.text-field--error {
     border-color: var(--error-color);
     color: var(--error-color);
   }
-  .text-field--success {
+  &.text-field--success {
     border-color: var(--success-color);
     color: var(--success-color);
   }
-  &.text-field__label {
+  .text-field__label {
     position: absolute;
     z-index: 1;
     inset: 0 auto auto 0.5rem;
@@ -192,9 +213,10 @@
     background-color: inherit;
     color: var(--on-surface);
   }
-  &.text-field__input {
+  .text-field__input {
     border-width: 0;
     border-radius: 0;
+    box-shadow: none;
     background-color: transparent;
     caret-color: var(--primary-color);
     color: var(--on-surface);
@@ -207,6 +229,9 @@
     display: block;
     width: 100%;
     height: 100%;
+    &::selection, &::-moz-selection{
+      background: var(--secondary-color);
+    }
   }
   textarea {
     display: block;
@@ -244,6 +269,12 @@
   flex-direction: column;
   align-items: start;
   gap: 0.5rem;
+  /* start invisible */
+  opacity: 0%;
+  
+  & > div {
+    width: 100%;
+  }
 }
 
 #extension-sheet {
@@ -251,7 +282,6 @@
   position: fixed;
   inset: 0 0 0 auto;
   min-width: 24.5rem;
-  min-height: 100svh;
   padding: 1rem;
   border-radius: var(--surface-corner) 0 0 var(--surface-corner);
   box-shadow: var(--surface-shadow);
@@ -259,6 +289,8 @@
   flex-direction: column;
   align-items: start;
   gap: 0.5rem;
+  /* start off page */
+  transform: translateX(100%);
 }
 
 #extension-snackbar {
@@ -276,17 +308,113 @@
   gap: 0.25rem;
 }
 
-/* animation */
+#extension-superbill-template{
+  position: relative;
+  width: 8.5in;
+  height: 11in;
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  padding: 1in 0.5in;
+  gap: 0.25in;
+  color: black;
+  background-color: white;
+  box-shadow: var(--surface-shadow);
 
-.hide,
-.hidden {
-  transition: var(--transition-on-hide);
-  opacity: 0%;
-  display: none;
-}
+  /* list styling */
 
-.show,
-.visible {
-  display: block;
-  opacity: 100%;
+  ul {
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+    margin: 0;
+    padding: 0;
+    gap: 0.25rem;
+    li{
+      margin: 0;
+      padding: 0;
+      list-style-type: none;
+    }
+  }
+
+  /* table styling */
+  /* TODO: style this table please  */
+
+  table{
+    th{
+      td{
+
+      }
+    }
+    tr{
+      td{
+
+      }
+    }
+  }
+
+  /* section styling */
+
+  .topline{
+    position: absolute;
+    inset: 0.5in auto auto 50%;
+    translate: -50%;
+    max-width: 7.5in;
+  }
+  .brand-icon{
+    justify-self: start;
+    grid-column: 1 / 2;
+  }
+  .meta-information{
+    justify-self: end;
+    grid-column: 2 / 3;
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+    gap: 0.25rem;
+  }
+  .patient-information{
+    justify-self: start;
+    grid-column: 1 / 2;
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+    gap: 0.25rem;
+  }
+  .account-summary{
+    justify-self: end;
+    grid-column: 2 / 3;
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+  }
+  .transaction-history{
+    justify-self: center;
+    grid-column: span 2;
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+    gap: 0.25rem;
+  }
+  .visit-history{
+    justify-self: center;
+    grid-column: span 2;
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+    gap: 0.25rem;
+  }
+  .signature-line{
+    justify-self: center;
+    grid-column: span 2;
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+    gap: 0.25rem;
+  }
+  .footer-line{
+    position: absolute;
+    inset: auto auto 0.5in 50%;
+    translate: -50%;
+    max-width: 7.5in;
+  }
 }
