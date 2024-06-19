@@ -1,2 +1,3 @@
 # untracked files
-exampleDetailVisit.json
+.DS_Store
+reference/**

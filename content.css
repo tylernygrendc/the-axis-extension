@@ -282,7 +282,7 @@
   position: fixed;
   inset: 0 0 0 auto;
   min-width: 24.5rem;
-  padding: 1rem;
+  padding: 2rem 1rem 1rem 1rem;
   border-radius: var(--surface-corner) 0 0 var(--surface-corner);
   box-shadow: var(--surface-shadow);
   display: flex;
@@ -310,12 +310,13 @@
 
 #extension-superbill-template{
   position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   width: 8.5in;
   height: 11in;
-  display: grid;
-  grid-template-columns: 1fr 1.5fr;
-  padding: 1in 0.5in;
-  gap: 0.25in;
+  padding: 1.5in 0.5in 0.5in 0.5in;
+  gap: 0.125in;
   color: black;
   background-color: white;
   box-shadow: var(--surface-shadow);
@@ -337,84 +338,31 @@
   }
 
   /* table styling */
-  /* TODO: style this table please  */
 
   table{
-    th{
+    border: 1px solid var(--on-surface);
+    th, tr{
+      display: flex;
+      flex-direction: row;
+      align-items: stretch;
+      border-bottom: 1px solid var(--on-surface);
+      padding: 0;
+      gap: 0;
       td{
-
+        flex: 1;
+        border-right: 1px solid var(--on-surface);
+        input{
+          width: 100%;
+          box-shadow: none;
+          border: 0;
+        }
+      }
+      :last-child{
+        border-right: 0px
       }
     }
-    tr{
-      td{
-
-      }
+    :last-child{
+      border-bottom: 0px;
     }
-  }
-
-  /* section styling */
-
-  .topline{
-    position: absolute;
-    inset: 0.5in auto auto 50%;
-    translate: -50%;
-    max-width: 7.5in;
-  }
-  .brand-icon{
-    justify-self: start;
-    grid-column: 1 / 2;
-  }
-  .meta-information{
-    justify-self: end;
-    grid-column: 2 / 3;
-    display: flex;
-    flex-direction: column;
-    align-items: start;
-    gap: 0.25rem;
-  }
-  .patient-information{
-    justify-self: start;
-    grid-column: 1 / 2;
-    display: flex;
-    flex-direction: column;
-    align-items: start;
-    gap: 0.25rem;
-  }
-  .account-summary{
-    justify-self: end;
-    grid-column: 2 / 3;
-    display: flex;
-    flex-direction: column;
-    align-items: start;
-  }
-  .transaction-history{
-    justify-self: center;
-    grid-column: span 2;
-    display: flex;
-    flex-direction: column;
-    align-items: start;
-    gap: 0.25rem;
-  }
-  .visit-history{
-    justify-self: center;
-    grid-column: span 2;
-    display: flex;
-    flex-direction: column;
-    align-items: start;
-    gap: 0.25rem;
-  }
-  .signature-line{
-    justify-self: center;
-    grid-column: span 2;
-    display: flex;
-    flex-direction: column;
-    align-items: start;
-    gap: 0.25rem;
-  }
-  .footer-line{
-    position: absolute;
-    inset: auto auto 0.5in 50%;
-    translate: -50%;
-    max-width: 7.5in;
   }
 }

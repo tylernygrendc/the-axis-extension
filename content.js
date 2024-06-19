@@ -149,7 +149,7 @@ class Client {
         this.oauth = localStorage.getItem("prod:SugarCRM:AuthAccessToken")
             //? quotations marks must be removed
             .toString().split(`"`)[1];
-        this.userData = localStorage.getItem("userData")
+        this.userData = localStorage.getItem("userdata")
     }
     getCurrentClinic(){
         if(this.getCurrentResource() === "tjc_backoffice"){
@@ -350,10 +350,108 @@ class Patient {
         };
     }
     getPhone(){
+        let mobilePhone = document.querySelector("[data-fieldname=phone_mobile] a");
+        let otherPhone = document.querySelector("[data-fieldname=phone_other] a");
         return {
-            mobile: document.querySelector("[data-fieldname=phone_mobile] a").innerText,
-            other: document.querySelector("[data-fieldname=phone_other] a").innerText
+            mobile: mobilePhone === null ? "" : mobilePhone.innerText,
+            other: otherPhone === null ? "" : otherPhone.innerText
         }
+    }
+}
+
+class Preview {
+    constructor(title = "Untitled"){
+        this.id = randomId();
+        this.title = title;
+        this.sectionList = [];
+        this.pageList = 1;
+    }
+    async create(){
+        // create a container for the preview
+        let preview = new Child().addClass(["preview"]).appendTo(document.body);
+
+        // create a doc inside of the preview container
+        let previewDocument = new Child().addClass(["preview__document"])
+            .appendTo(preview.getNode());
+
+        // create a header for the previewed document
+        let previewHeader = new Child().addClass(["document__header"])
+            .appendTo(previewDocument.getNode());
+        // create a footer for the previewed document
+        let previewFooter = new Child().addClass(["document__footer"])
+            .setInnerText()
+            .appendTo(previewDocument.getNode());
+
+        // get clinic details to populate the header and footer
+        let clinicDetails = await getClinicDetails(new Client().getCurrentClinic());
+
+        // grab the nodes for both the header and footer
+        let headerNode = previewHeader.getNode(),
+            footerNode = previewFooter.getNode()
+
+        // populate the header with a logo, title, and topline
+        new Child("img").addAttribute({src: "assets/joint_logo.png"})
+            .addClass(["logo"])
+            .appendTo(headerNode);
+        new Child("h1").setInnerText(this.title)
+            .addClass(["title"])
+            .appendTo(headerNode);
+        new Child("span").addClass(["topline"])
+            .setInnerText(`This clinic is owned and operated by ${clinicDetails.pc} and managed by ${clinicDetails.business_entity}.`)
+            .appendTo(headerNode);
+        
+        // populate the footer with this clinic's name, address, phone, and email
+        new Child("span")
+            .addClass(["company"])
+            .setInnerText(`The Joint Chiropractic - ${clinicDetails.name}`)
+            .appendTo(footerNode);
+        new Child("address")
+            .addClass(["clinic"])
+            .setInnerText(`${clinicDetails.billing_address_street} ${clinicDetails.billing_address_city}, ${clinicDetails.billing_address_state} ${clinicDetails.billing_address_postalcode}`)
+            .appendTo(footerNode);
+        new Child("span")
+            .addClass(["contact"])
+            .setInnerText(`${clinicDetails.phone1} | ${clinicDetails.email}`)
+            .appendTo(footerNode);
+    }
+    async addSection(children = [], classList = []){
+        // a section cannot be added if the this.create() has not been called
+        if(document.querySelector(`${this.id}`) === null) 
+            throw new Error("Method create() must be called on Preview before a new section can be added.");
+        // create a section container
+        let section = new Child()
+            .addClass(["section"]).addClass(classList)
+            .appendTo(document.querySelector(`${this.id}`));
+        // add this section to this object
+        this.sectionList.push(section);
+        // populate the section container with the supplied children 
+        for(const child in children) child.appendTo(section);
+        return this;
+    }
+    async appendTo(parent){
+        let preview = await this.create();
+        parent.append(preview);
+        return this;
+    }
+    setId(id = this.id){
+        this.id = id;
+        return this;
+    }
+    setTitle(title = "Untitled"){
+        this.title = title;
+        return this;
+    }
+}
+
+class Progressbar {
+    constructor(){
+        this.progress = 0;
+    }
+    appendTo(parent){
+
+    }
+    setProgress(value){
+        this.progress = value;
     }
 }
 
@@ -396,7 +494,7 @@ function buildExtensionDialog(){
     // there could be multiple extension features
     // features are dependent on the current resource
     switch(new Client().getCurrentResource()){
-        case "Contacts":
+        case "contacts":
             // on the contacts page, the user can...
             //* (1) generate a superbill for the current patient
             let superbillTool = new Child("div").addClass().appendTo(dialog).getNode();
@@ -434,7 +532,7 @@ function buildExtensionDialog(){
             // TODO: tell the user
             break;
     }
-    // show dialog (fade in)
+    // show dialog (fade of)
     fade(dialog.getNode(), true);
 }
 
@@ -457,50 +555,25 @@ function buildExtensionSheet(){
             // slide sheet out to right
             sheetSlide(sheet.getNode(), "right", false);
         });
-    // slide the sheet in from right
+    // slide the sheet of from right
     sheetSlide(sheet.getNode(), "right", true);
     return sheet;
 }
 
-function buildSuperbillTemplate(){
-    // create the containing document
-    let template = new Child("div").setId("extension-superbill-template").appendTo(document.body);
-    // access the node, since we'll be adding stuff to this
-    let templateNode = template.getNode();
-    // add topline to template
-    // this will hold "The Joint Chiropractic - [location]..."
-    let topline = new Child("span").addClass(["topline"]).appendTo(templateNode);
-    // add The Joint's official svg logo
-    // TODO: pick a size
-    // ? does this come with a background
-    let brandIcon = new Child("img").addClass(["brand-icon"])
-        .addAttribute({src: "./joint_logo.svg"}).appendTo(templateNode);
-    // add a div to show information about this document
-    // this will include date created, period, reference number, prepared by, etc
-    let metaInformation = new Child("ul").addClass(["meta-information"]).appendTo(templateNode);
-    // add a div to show the relevant patient information
-    // this will include name, date of birth, address, phone, email, and diagnosis
-    let patientInformation = new Child("ul").addClass(["patient-information"]).appendTo(templateNode);
-    // add a div to show the patient's account summary for the set period
-    // this includes the total paid and any refunds
-    let accountSummary = new Child("ul").addClass(["account-summary"]).appendTo(templateNode);
-    // add a div to show the patient's transaction history
-    let transactionHistory = new Child("div").addClass(["transaction-history"]).appendTo(templateNode);
-    // add a div to show the patient's visit history
-    let visitHistory = new Child("div").addClass(["visit-history"]).appendTo(templateNode);
-    // add a signature line that shows "if you have questions contact..."
-    let signatureLine = new Child("div").addClass(["signature-line"]).appendTo(templateNode);
-    // add a footer that shows "managed by..."
-    let footerLine = new Child("span").addClass(["footer-line"]).appendTo(templateNode);
-    // return the template as an object of objects
-    return {
+function buildSuperbill(){
+    // create a new preview
+    let preview = new Preview("Superbill")
+        .appendTo(document.querySelector("#extension-sheet"));
+    // append the relevant sections to this 
+    let obj = {
         id: () => {
             let patient = new Patient();
             let dob = patient.dob.split("/");
-            return `${ patient.name.initials + dob[0] + dob[1] + dob[2]}`
+            return `${ patient.name.initials + dob[0] + dob[1] + dob[2] }`;
         },
         self: template,
         topline: topline,
+        documentTitle: documentTitle,
         brandIcon: brandIcon,
         metaInformation: metaInformation,
         patientInformation: patientInformation,
@@ -534,45 +607,39 @@ async function fade(node = Element, fadeIn = false){
     }
 }
 
-async function generateSuperbill(startDate = yearStart, endDate = present){
-    // get information for the current clinic
-    let clinic = await getClinicDetails(new Client().getCurrentClinic());
+async function createSuperbill(startDate = yearStart, endDate = present){
+
     // get all transactions and visits between startDate and endDate
     let transactions, visits;
     try{
         if(startDate instanceof Date && endDate instanceof Date){
             transactions = await getTransactionsFrom(startDate, endDate);
-            visits = await getVisits(startDate, endDate);
+            visits = await getVisitsFrom(startDate, endDate);
         }  else { throw new Error(`Parameter Instanceof Date is required at generateSuperbill().`); }
     } catch (error) { console.log(error); return error; }
 
     // TODO: remove this output log
     console.log(clinic, transactions, visits);
 
-    // build the superbill template
-    let template = buildSuperbillTemplate();
-
-    // populate the superbill topline
-    template.topline.setInnerText(`The Joint Chiropractic - ${clinic.name} | ${clinic.billing_address_city}, ${clinic.billing_address_state}`).update();
-    
     // access the current client and patient objects
     let client = new Client(), patient = new Patient();
 
+    // create a new preview
+    let preview = await new Preview("Superbill")
+        .appendTo(document.querySelector("#extension-sheet"));
+
     // build an object to access meta information, patient information, and account summary
-    // and access the each respective node on the superbill template
     let lists = [
         {
-            node: template.metaInformation.getNode(),
             content: [
                 {label: "Issue Date", value: present},
                 {label: "Period Start", value: startDate},
                 {label: "Period End", value: endDate},
-                {label: "Reference Number", value: template.id()},
+                {label: "Reference Number", value: `${ patient.name.initials + patient.dob.split("/")[0] + patient.dob.split("/")[1] + patient.dob.split("/")[2] }`},
                 {label: "Prepared By", value: client.userData.username}
             ]
         },
         {
-            node: template.patientInformation.getNode(),
             content: [
                 {label: "Name", value: patient.name.fullName},
                 {label: "Date of Birth", value: `${patient.dob} (age ${patient.age})`},
@@ -582,28 +649,27 @@ async function generateSuperbill(startDate = yearStart, endDate = present){
             ]
         },
         {
-            node: template.accountSummary.getNode(),
             // TODO: check that each of these summary items match what the table says
             // ! this will be important because the table is editable (in case something is incorrect)
             // ? should the table be editable
             content: [
                 {label: "Total Paid", value: () => {
                     let paid = 0;
-                    for(const transaction in transactions)
+                    for(const transaction of transactions)
                         if(transaction.type === "Refund/Void") paid -= parseFloat(transaction.amount);
                         else paid += parseFloat(transaction.amount);
                     return paid;
                 }},
                 {label: "Total Billed", value: () => {
                     let billed = 0;
-                    for(const transaction in transactions)
+                    for(const transaction of transactions)
                         if(transaction.type === "Refund/Void") billed += 0;
                         else billed += parseFloat(transaction.amount);
                     return billed;
                 }},
                 {label: "Total Refunded", value: () => {
                     let refunded = 0;
-                    for(const transaction in transactions)
+                    for(const transaction of transactions)
                         if(transaction.type === "Refund/Void") refunded +=  parseFloat(transaction.amount);
                     return refunded;
                 }},
@@ -613,18 +679,26 @@ async function generateSuperbill(startDate = yearStart, endDate = present){
     ];
     // for each list, add a li for each list content item
     // populate each li with a label and a value
+    // ! stopped here
     for(const list of lists){
+        let children = [];
+        list.content.forEach(item => {
+            let label = new Child("span").setInnerText(item.label)
+            children.push()
+        });
+        let section = preview.addSection(children, [])
+
         let li = new Child("li").appendTo(list.node);
-        new Child("span").setClass(["item__label"])
+        new Child("span").addClass(["item__label"])
             .setInnerText(list.content.label).appendTo(li);
-        new Child("span").setClass(["item__value"])
+        new Child("span").addClass(["item__value"])
             .setInnerText(list.content.value).appendTo(li);
     }
 
     // create a table to hold all transactions
     let transactionsTable = new Child("table").appendTo(template.transactionHistory.getNode());
     // populate the superbill transaction history table
-    for(const transaction in transactions){
+    for(const transaction of transactions){
         // create a new table row
         let row = new Child("tr").appendTo(transactionsTable.getNode()).getNode();
         // format the transaction date
@@ -651,7 +725,7 @@ async function generateSuperbill(startDate = yearStart, endDate = present){
         // transaction date, purchase item, payment method, transaction status, paid amount, refund amount
         let cellValues = [transactionDate, transaction.product_purchased, paymentMethod, amount.paid, amount.refunded];
         // populate the table row with cell values
-        for(const value in cellValues){
+        for(const value of cellValues){
             // create the semantic td element
             let cell = new Child("td").appendTo(row);
             // put an editable input element inside
@@ -664,7 +738,7 @@ async function generateSuperbill(startDate = yearStart, endDate = present){
     // create a table to hold all visit history
     let visitsTable = new Child("table").appendTo(template.visitHistory.getNode());
     // populate the superbill visit history table
-    for(const visit in visits){
+    for(const visit of visits){
         // create a new table row
         let row = new Child("tr").appendTo(visitsTable.getNode()).getNode();
         // format the visit date
@@ -682,10 +756,10 @@ async function generateSuperbill(startDate = yearStart, endDate = present){
             visitDate = `${month}/${date}/${year}`;
 
         // create a variable to store all row cell values 
-        // date, procedure, charge, modification, cost, physician, clinic
-        let cellValues = [visitDate, charge, adjustment, cost, physician, clinic];
+        // date, procedure, cost, physician, clinic
+        let cellValues = [visitDate, visit.procedure, visit.visitCost, visit.users_tj_visits_2_name, visit.tj_clinics_tj_visits_1_name];
         // populate the table row with cell values
-        for(const value in cellValues){
+        for(const value of cellValues){
             // create the semantic td element
             let cell = new Child("td").appendTo(row);
             // put an editable input element inside
@@ -739,7 +813,7 @@ async function getClinicDetails(clinicName = ""){
     }
 }
 
-async function getDetailedVisits(startDate = yearStart, endDate = present){
+async function getDetailedVisitsFrom(startDate = yearStart, endDate = present){
     try{
         const client = new Client();
         const patient = new Patient();
@@ -765,8 +839,8 @@ async function getDetailedVisits(startDate = yearStart, endDate = present){
                             visitDate.getFullYear(), 
                             visitDate.getMonth(), 
                             visitDate.getDate());
-                    // store the matching visits in the matchingVisits array
-                    if(visitDate >= startDate && visitDate <= endDate) matchingVisits.push(visit.id);
+                    // store the matching visits of the matchingVisits array
+                    if(visitDate >= startDate && visitDate <= endDate) matchingVisits.push(visit);
                 }
             } else { throw new Error(`Expected type of array, but received type of ${typeof visits.records} instead.`); }
         } else { throw response.status; }
@@ -790,7 +864,7 @@ async function getDetailedVisits(startDate = yearStart, endDate = present){
             // for each possible segment, check to see if has been manipulated
             for(const segment of segmentList){
                 if(String(match[segment]).length != 0 && i < 48){
-                    // determine the region that the joint is in and push the region to the manipulatedRegions array
+                    // determine the region that the joint is of and push the region to the manipulatedRegions array
                     if(i === 0) { spinalRegions.push("head"); }
                     if(i > 0 && i <= 7) { spinalRegions.push("cervical"); i = 7; }
                     if(i > 7 && i <= 29) { spinalRegions.push("thoracic"); i = 29; }
@@ -804,13 +878,13 @@ async function getDetailedVisits(startDate = yearStart, endDate = present){
                 ++i;
             }
             // 98940 is used if two or fewer spinal regions were manipulated
-            if(spinalRegions.length < 3) visitObject.procedure = "98940";
+            if(spinalRegions.length < 3) visitObject.procedure = "98940 CHIROPRACTIC MANIPULATIVE TREATMENT, SPINAL (1-2 REGIONS)";
             // 98941 is used if two or more spinal regions were manipulated
-            if(spinalRegions.length > 2 ) visitObject.procedure = "98941";
+            if(spinalRegions.length > 2 ) visitObject.procedure = "98941 CHIROPRACTIC MANIPULATIVE TREATMENT, SPINAL (3-4 REGIONS)";
             // 98942 is used if five or more spinal regions were manipulated
-            if(spinalRegions.length > 5 ) visitObject.procedure = "98942";
+            if(spinalRegions.length > 5 ) visitObject.procedure = "98942 CHIROPRACTIC MANIPULATIVE TREATMENT, SPINAL (5+ REGIONS)";
             // 98943 is used if no spinal regions were manipulated and any extremities were
-            if(spinalRegions.length === 0 && extremityRegions > 0) visitObject.procedure = "98943";
+            if(spinalRegions.length === 0 && extremityRegions > 0) visitObject.procedure = "98943 CHIROPRACTIC MANIPULATIVE TREATMENT, EXTRASPINAL";
 
             // to determine the correct diagnoses, count how many regions include a subluxation
             // reset the counter
@@ -820,13 +894,13 @@ async function getDetailedVisits(startDate = yearStart, endDate = present){
             // check each segment for subluxation 
             for(const segment of segmentList){
                 if(String(match[segment]) === "1" && i < 36){
-                    // determine the region that the joint is in and push the region to the manipulatedRegions array
-                    if(i === 0) { visitObject.diagnosis.push("M99.00"); }
-                    if(i > 0 && i <= 7) { visitObject.diagnosis.push("M99.01"); i = 7; }
-                    if(i > 7 && i <= 29) { visitObject.diagnosis.push("M99.02"); i = 29; }
-                    if(i > 29 && i <= 34) { visitObject.diagnosis.push("M99.03"); i = 34; }
-                    if(i === 35) { visitObject.diagnosis.push("M99.04"); }
-                    if(i === 36) { visitObject.diagnosis.push("M99.05"); }
+                    // determine the region that the joint is of and push the region to the manipulatedRegions array
+                    if(i === 0) { visitObject.diagnosis.push("M99.00 SEGMENTAL AND SOMATIC DYSFUNCTION OF HEAD REGION"); }
+                    if(i > 0 && i <= 7) { visitObject.diagnosis.push("M99.01 SEGMENTAL AND SOMATIC DYSFUNCTION OF CERVICAL REGION"); i = 7; }
+                    if(i > 7 && i <= 29) { visitObject.diagnosis.push("M99.02 SEGMENTAL AND SOMATIC DYSFUNCTION OF THORACIC REGION"); i = 29; }
+                    if(i > 29 && i <= 34) { visitObject.diagnosis.push("M99.03 SEGMENTAL AND SOMATIC DYSFUNCTION OF LUMBAR REGION"); i = 34; }
+                    if(i === 35) { visitObject.diagnosis.push("M99.04 SEGMENTAL AND SOMATIC DYSFUNCTION OF SACRAL REGION"); }
+                    if(i === 36) { visitObject.diagnosis.push("M99.05 SEGMENTAL AND SOMATIC DYSFUNCTION OF PELVIC REGION"); }
                 }
                 // increment the counter
                 ++i;
@@ -871,8 +945,11 @@ async function getTransactionsFrom(startDate = yearStart, endDate = present){
         // request transaction history
         let response = await fetch(new Request(`https://axis.thejoint.com/rest/v11_20/Contacts/${ new Patient().id }/custom_link/contacts_transactions_refunds?filter%5B0%5D%5Bdate_entered%5D%5B%24dateBetween%5D%5B%5D=${ys}-${ms}-${ds}&filter%5B0%5D%5Bdate_entered%5D%5B%24dateBetween%5D%5B%5D=${ye}-${me}-${de}`), { headers: {"Oauth-Token": new Client().oauth} });
         // process and return response
-        if(response.ok) return await response.json() 
-        else throw `status: ${response.status}`;
+        if(response.ok) {
+            let obj = await response.json();
+            return obj.records;
+        }
+        else { throw `status: ${response.status}`; }
     } catch (error){
         error = error instanceof Error ? error : 
             new Error(`Server response at readTransactionsFrom() returned "${error}"`);
@@ -881,7 +958,7 @@ async function getTransactionsFrom(startDate = yearStart, endDate = present){
     }
 }
 
-async function getVisits(startDate = yearStart, endDate = present){
+async function getVisitsFrom(startDate = yearStart, endDate = present){
     try{
         const client = new Client();
         const patient = new Patient();
@@ -910,7 +987,7 @@ async function getVisits(startDate = yearStart, endDate = present){
                             visitDate.getFullYear(), 
                             visitDate.getMonth(), 
                             visitDate.getDate());
-                    // store the matching visits in the matchingVisits array
+                    // store the matching visits of the matchingVisits array
                     if(visitDate >= startDate && visitDate <= endDate) matchingVisits.push(visit.id);
                 }
                 // create an iteration counter
@@ -922,28 +999,33 @@ async function getVisits(startDate = yearStart, endDate = present){
                     else ++i;
                     // get detailed records for the visit with the current visit id
                     let res = await fetch(new Request(`https://axis.thejoint.com/rest/v11_20/TJ_Visits/${id}?erased_fields=true&view=record&fields=date_entered%2Cstatus%2Chas_carecard&viewed=1`), { headers: {"Oauth-Token": client.oauth} });
-                    // store visit details in the records array
+                    // store visit details of the records array
                     records.push(await res.json());
                 }
             } else { throw new Error(`Expected type of array, but received type of ${typeof visits.records} instead.`); }
         } else { throw response.status; }
 
-        // some details are not included in these records
+        // some details are not included of these records
         // make a separate request to get diagnosis, procedure, and const information
         // ! some of this is inferred or incomplete information
-        let detailedVisits = await getDetailedVisits(startDate, endDate);
+        let detailedVisits = await getDetailedVisitsFrom(startDate, endDate);
 
         // for each record, merge the visit details
         records.forEach((record, i) => {
-            // hopefully they're in the same order
+            console.log("Test:", record.id, detailedVisits);
+            // hopefully they're of the same order
             if(record.id === detailedVisits[i].id){
                 // merge
                 Object.assign(record, detailedVisits[i]);
+                console.log("Matched:", record);
             } else {
-                // if they're not in the same order, check each visit id for a match
-                for(const detailedVisit in detailedVisits){
+                // if they're not of the same order, check each visit id for a match
+                for(const detailedVisit of detailedVisits){
                     // and merge them if they match
-                    if(record.id === detailedVisit.id) Object.assign(record, detailedVisit);
+                    if(record.id === detailedVisit.id) {
+                        Object.assign(record, detailedVisit);
+                        console.log("Out-of-order Match:", record);
+                    } 
                     // ? what if they don't match
                 }
             }

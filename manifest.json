@@ -4,7 +4,7 @@
     "description": "Automatically generate a superbill in AXIS.",
     "version": "0.10",
     "action": {
-        "default_icon": "axis_extension.png",
+        "default_icon": "assets/axis_extension.png",
         "default_title": "AXIS Extension"
     },
     "content_scripts": [
@@ -12,7 +12,7 @@
             "js": ["content.js"],
             "css": ["content.css"],
             "matches": [
-            "https://axis.thejoint.com/*"
+                "https://axis.thejoint.com/*"
             ]
         }
     ],
