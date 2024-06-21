@@ -1,6 +1,3 @@
-const present = new Date()
-const yearStart = new Date(present.getFullYear(), 0, 1);
-
 class Button {
     constructor(label = ""){
         this.id = randomId();
@@ -50,14 +47,8 @@ class Button {
             .appendTo(button);
         return document.querySelector(`#${button.id}`);
     }
-    getChildren(){
-        return document.querySelector(`#${this.id}`).children;
-    }
     getNode(){
         return document.querySelector(`#${this.id}`);
-    }
-    getParent(){
-        return document.querySelector(`#${this.id}`).parentElement;
     }
     setId(str=""){
         this.id = str;
@@ -81,7 +72,7 @@ class Child {
         this.classList = [];
         this.attributes = {};
         this.innerText = "";
-        return this;
+        this.children = [];
     }
     addAttribute(object = {}){
         switch(typeof object) {
@@ -96,6 +87,11 @@ class Child {
                 console.log(`Warning: addAttribute() method on Child expects parameter type of object but was passed type of ${ object } instead. Attributes were not be applied to Child object:`, this);
                 break;
         }
+        return this;
+    }
+    addChildren(array = []){
+        if(Array.isArray(array)) for(const obj of array) this.children.push(obj);
+        else this.children.push(array);
         return this;
     }
     addClass(array = []){
@@ -120,8 +116,20 @@ class Child {
         }
         return child;
     }
-    getChildren(){
-        return document.querySelector(`#${this.id}`).children;
+    exists(){
+        return this.getNode() === null ? false : true;
+    }
+    getAttributes(node = document.body){
+        // allow the option to pass a querySelector string
+        if(typeof node === "string") node = document.querySelector(node);
+        // iterate over attributes and return an object of attributes
+        // don't include excluded attributes
+        let attributes = {}, excluded = ["id", "class"];
+        for(let i = 0; i < node.attributes.length; ++i){
+            if(!excluded.includes(node.attributes.item(i).name))
+                attributes[node.attributes.item(i).name] = node.attributes.item(i).value;
+        }
+        return attributes;
     }
     getNode(){
         return document.querySelector(`#${this.id}`);
@@ -136,6 +144,13 @@ class Child {
     setInnerText(str=""){
         this.innerText = str;
         return this;
+    }
+    objectify(node){
+        return new Child(node.tagName)
+            .setId(node.id)
+            .addClass(node.classList)
+            .addAttribute(this.getAttributes(node))
+            .setInnerText(node.innerText);
     }
     update(){
         let outdated = document.querySelector(`#${this.id}`);
@@ -226,15 +241,6 @@ class Textfield {
             .appendTo(textfieldContainer);
         return document.querySelector(`#${textfieldContainer.id}`);
     }
-    getChildren(){
-        return document.querySelector(`#${this.id}`).children;
-    }
-    getNode(){
-        return document.querySelector(`#${this.id}`);
-    }
-    getParent(){
-        return document.querySelector(`#${this.id}`).parentElement;
-    }
     setHint(str=""){
         this.hint = str;
         return this;  
@@ -258,12 +264,6 @@ class Textfield {
             this.type = "text"; 
             console.log(`Warning: Input type "${str}" is invalid.`)
         }
-        return this;
-    }
-    update(){
-        let outdated = document.querySelector(`#${this.id}`);
-        let updated = this.create();
-        outdated.replaceWith(updated);
         return this;
     }
 }
@@ -359,53 +359,465 @@ class Patient {
     }
 }
 
-class Preview {
-    constructor(title = "Untitled"){
-        this.id = randomId();
-        this.title = title;
-        this.sectionList = [];
-        this.pageList = 1;
+const animation = {
+    fade: async (node = Element, fadeIn = false) => {
+        let animation;
+        if(fadeIn){
+            animation = node.animate([
+                {opacity: "0%"},{opacity: "100%"}
+            ], {duration: 250, iterations: 1, easing: "linear", fill: "forwards"});
+            await animation.finished;
+            animation.commitStyles();
+            animation.cancel();
+            // allow for chaining
+            return node;
+        } else {
+            animation = node.animate([
+                {opacity: "100%"},{opacity: "0%"}
+            ], {duration: 250, iterations: 1, easing: "linear", fill: "forwards"});
+            await animation.finished;
+            animation.commitStyles();
+            animation.cancel();
+            node.remove();
+        }
+    },
+    slide: async (node = Element, from = "right", slideIn = false) => {
+        let keyframes, position;
+        if(slideIn) position = { start: 100, end: 0 };
+        else position = { start: 0, end: 100 };
+        switch(from){
+            case `top`:
+                keyframes = [
+                    {transform: `translateY(${position.start}%)`}, 
+                    {transform: `translateY(${position.end}%)`}
+                ];
+                break;
+            case `right`:
+                keyframes = [
+                    {transform: `translateX(${position.start}%)`}, 
+                    {transform: `translateX(${position.end}%)`}
+                ];
+                break;
+            case `bottom`:
+                keyframes = [
+                    {transform: `translateY(-${position.start}%)`}, 
+                    {transform: `translateY(-${position.end}%)`}
+                ];
+                break;
+            case `left`:
+                keyframes = [
+                    {transform: `translateX(-${position.start}%)`}, 
+                    {transform: `translateX(-${position.end}%)`}
+                ];
+                break;
+            default:
+                console.log(`Warning: "from" parameter at function slide() is invalid.`);
+                return node;
+        }
+        let animation = node.animate(keyframes,
+            {duration: 350, iterations: 1, easing: "linear", fill: "forwards"});
+        await animation.finished;
+        animation.commitStyles();
+        animation.cancel();
+        if(slideIn) return node;
+        else node.remove(0);
     }
-    async create(){
-        // create a container for the preview
-        let preview = new Child().addClass(["preview"]).appendTo(document.body);
+}
+
+const axis = {
+    getClinicDetails: async (clinicName = "") => {
+        try{
+            // format clinic name for url query
+            // create a string to store the clinic name
+            // create an iteration counter
+            let urlQuery = "", i = 0;
+            let clinicNameWordsArray = clinicName.split(" ");
+            for(const word of clinicNameWordsArray){
+                if(clinicNameWordsArray.length - 1 > i) { 
+                    urlQuery += `${word}%20`; ++i;
+                } else { urlQuery += `${word}`; }
+            }
+    
+            // first request to get clinic id
+            let firstResponse = await fetch(new Request(`https://axis.thejoint.com/rest/v11_20/TJ_Clinics?erased_fields=true&view=list&fields=following%2Cmy_favorite&max_num=2&order_by=date_modified%3Adesc&filter%5B0%5D%5Bname%5D%5B%24starts%5D=${urlQuery}`), {headers: { "Oauth-Token": new Client().oauth }});
+    
+            // create a variable to store the clinic id
+            let clinicId = "";
+    
+            // process request response and set value of clinicId
+            if(firstResponse.ok) {
+                let clinic = await firstResponse.json();
+                if(clinic.records.length === 1) clinicId = clinic.records[0].id;
+                else throw new Error(`Expected 1 results, but received ${clinic.records.length} results.`);
+            } else { throw `status: ${firstResponse.status}`; }
+    
+            // second request to get detailed information for clinic
+            let secondResponse = await fetch(new Request(`https://axis.thejoint.com/rest/v11_20/TJ_Clinics/${clinicId}?erased_fields=true&view=record&fields=my_favorite&viewed=1`), {headers: { "Oauth-Token": new Client().oauth }});
+    
+            // process second request and return detailed clinic information
+            if(secondResponse.ok) return await secondResponse.json(); 
+            else throw `status: ${secondResponse.status}`;
+        } catch (error) {
+            error = error instanceof Error ? error : 
+                new Error(`Server response at getClinicDetails() returned "${error}"`);
+            console.log(error);
+            return error;
+        }
+    },
+    getDetailedVisitsFrom: async (startDate = yearStart, endDate = present) => {
+        try{
+            const client = new Client();
+            const patient = new Patient();
+            // the visits api calls a certain number of visits, starting with the most recent visit
+            // set the max_num query equal to the difference between present and startDate
+            let maxNum = Math.ceil((present.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
+    
+            // request a quantity of visit records less than or equal to the set maxNum
+            let response = await fetch(new Request(`https://axis.thejoint.com/rest/v11_20/Contacts/${ patient.id }/link/contacts_tj_visits_1?erased_fields=true&max_num=${maxNum}`), { headers: {"Oauth-Token": client.oauth} });
+            let visits = await response.json();
+    
+            // the response will include include visits outside the set date range
+            // create an array to store each visit date that matches the date range
+            let matchingVisits = [];
+    
+            // only store visits that fall between the set startDate and endDate
+            if(response.ok) {
+                if(Array.isArray(visits.records)){
+                    for(const visit of visits.records) {
+                        // format the visit date for evaluation
+                        let visitDate = new Date(visit.date_entered);
+                            visitDate = new Date(
+                                visitDate.getFullYear(), 
+                                visitDate.getMonth(), 
+                                visitDate.getDate());
+                        // store the matching visits of the matchingVisits array
+                        if(visitDate >= startDate && visitDate <= endDate) matchingVisits.push(visit);
+                    }
+                } else { throw new Error(`Expected type of array, but received type of ${typeof visits.records} instead.`); }
+            } else { throw response.status; }
+    
+            // create an array to store detailed visit information
+            let detailedVisits = []
+            for(const match of matchingVisits){
+                // create variable to store each desired information field
+                let visitObject = {
+                    id: match.id,
+                    diagnosis: [], 
+                    procedure: "",
+                    visitCost: match.visit_price
+                }
+    
+                // to determine the correct procedure code, count how many regions were manipulated
+                // create an array of keys corresponding to adjusted segments
+                let segmentList = ["spinal_c0_c", "spinal_c1", "spinal_c2", "spinal_c3", "spinal_c4", "spinal_c5", "spinal_c6", "spinal_c7", "t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8", "t9", "t10", "t11", "t12", "l1", "l2", "l3", "l4", "l5", "rpelvis", "lpelvis", "rsacrum", "lsacrum", "shoulderr", "shoulderl", "elbowr", "elbowl", "wristr", "wristl", "hipr", "hipl", "kneer", "kneel", "ankler", "anklel", "ribsr", "ribsl"];
+                // create an iteration counter and a place to store manipulated regions
+                let i = 0, spinalRegions = [], extremityRegions = [];
+                // for each possible segment, check to see if has been manipulated
+                for(const segment of segmentList){
+                    if(String(match[segment]).length != 0 && i < 48){
+                        // determine the region that the joint is of and push the region to the manipulatedRegions array
+                        if(i === 0) { spinalRegions.push("head"); }
+                        if(i > 0 && i <= 7) { spinalRegions.push("cervical"); i = 7; }
+                        if(i > 7 && i <= 29) { spinalRegions.push("thoracic"); i = 29; }
+                        if(i > 29 && i <= 34) { spinalRegions.push("lumbar"); i = 34; }
+                        if(i > 34 && i <= 36) { spinalRegions.push("pelvis"); i = 36; }
+                        if(i === 37) { spinalRegions.push("sacrum"); }
+                        if(i > 37 && i <= 42) { extremityRegions.push("upper extremity"); i = 41; }
+                        if(i > 42) { extremityRegions.push("lower extremity"); i = 47; }
+                    }
+                    // increment the counter
+                    ++i;
+                }
+                // 98940 is used if two or fewer spinal regions were manipulated
+                if(spinalRegions.length < 3) visitObject.procedure = "98940 CHIROPRACTIC MANIPULATIVE TREATMENT, SPINAL (1-2 REGIONS)";
+                // 98941 is used if two or more spinal regions were manipulated
+                if(spinalRegions.length > 2 ) visitObject.procedure = "98941 CHIROPRACTIC MANIPULATIVE TREATMENT, SPINAL (3-4 REGIONS)";
+                // 98942 is used if five or more spinal regions were manipulated
+                if(spinalRegions.length > 5 ) visitObject.procedure = "98942 CHIROPRACTIC MANIPULATIVE TREATMENT, SPINAL (5+ REGIONS)";
+                // 98943 is used if no spinal regions were manipulated and any extremities were
+                if(spinalRegions.length === 0 && extremityRegions > 0) visitObject.procedure = "98943 CHIROPRACTIC MANIPULATIVE TREATMENT, EXTRASPINAL";
+    
+                // to determine the correct diagnoses, count how many regions include a subluxation
+                // reset the counter
+                i = 0;
+                // update the segmentList to be consistent with axis naming conventions for subluxation levels
+                segmentList = ["sub_c0_c", "sub_c1", "sub_c2", "sub_c3", "sub_c4", "sub_c5", "sub_c6", "sub_c7", "sub_t1", "sub_t2", "sub_t3", "sub_t4", "sub_t5", "sub_t6", "sub_t7", "sub_t8", "sub_t9", "sub_t10", "sub_t11", "sub_t12", "sub_l1", "sub_l2", "sub_l3", "sub_l4", "sub_l5", "sub_pelvis-c", "sub_sacrum"];
+                // check each segment for subluxation 
+                for(const segment of segmentList){
+                    if(String(match[segment]) === "1" && i < 36){
+                        // determine the region that the joint is of and push the region to the manipulatedRegions array
+                        if(i === 0) { visitObject.diagnosis.push("M99.00 SEGMENTAL AND SOMATIC DYSFUNCTION OF HEAD REGION"); }
+                        if(i > 0 && i <= 7) { visitObject.diagnosis.push("M99.01 SEGMENTAL AND SOMATIC DYSFUNCTION OF CERVICAL REGION"); i = 7; }
+                        if(i > 7 && i <= 29) { visitObject.diagnosis.push("M99.02 SEGMENTAL AND SOMATIC DYSFUNCTION OF THORACIC REGION"); i = 29; }
+                        if(i > 29 && i <= 34) { visitObject.diagnosis.push("M99.03 SEGMENTAL AND SOMATIC DYSFUNCTION OF LUMBAR REGION"); i = 34; }
+                        if(i === 35) { visitObject.diagnosis.push("M99.04 SEGMENTAL AND SOMATIC DYSFUNCTION OF SACRAL REGION"); }
+                        if(i === 36) { visitObject.diagnosis.push("M99.05 SEGMENTAL AND SOMATIC DYSFUNCTION OF PELVIC REGION"); }
+                    }
+                    // increment the counter
+                    ++i;
+                }
+                detailedVisits.push(visitObject);
+            }
+            // return detailed visit information
+            return detailedVisits;
+    
+        } catch (error){
+            error = error instanceof Error ? error : 
+                new Error(`Server response at readTransactionsFrom() returned "${error}"`);
+            console.log(error);
+            return error;
+        }
+    },
+    getTransactionsFrom: async (startDate = yearStart, endDate = present) => {
+        try{
+            // check that the input values are *probably* valid
+            // ? what could go wrong
+            if(startDate instanceof Date === false) 
+                throw new Error(`Expected instance of Date at parameter startDate.`);
+            if(endDate instanceof Date === false) 
+                throw new Error(`Expected instance of Date at parameter endDate.`);
+    
+            // create variables for start date, month, and year
+            let ds = new Date(startDate).getDate().toString();
+            if(String(ds).length < 2) ds = `0${ds}`;
+            let ms = new Date(startDate).getMonth() + 1; 
+                ms = ms.toString();
+            if(String(ms).length < 2) ms = `0${ms}`;
+            let ys = new Date(startDate).getFullYear().toString();
+            // create variables for end date, month, and year
+            let de = new Date(endDate).getDate().toString();
+            if(String(de).length < 2) de = `0${de}`;
+            let me = new Date(endDate).getMonth() + 1;
+                me = me.toString();
+            if(String(me).length < 2) me = `0${me}`;
+            let ye = new Date(endDate).getFullYear().toString();
+    
+            // request transaction history
+            let response = await fetch(new Request(`https://axis.thejoint.com/rest/v11_20/Contacts/${ new Patient().id }/custom_link/contacts_transactions_refunds?filter%5B0%5D%5Bdate_entered%5D%5B%24dateBetween%5D%5B%5D=${ys}-${ms}-${ds}&filter%5B0%5D%5Bdate_entered%5D%5B%24dateBetween%5D%5B%5D=${ye}-${me}-${de}`), { headers: {"Oauth-Token": new Client().oauth} });
+            // process and return response
+            if(response.ok) {
+                let obj = await response.json();
+                return obj.records;
+            }
+            else { throw `status: ${response.status}`; }
+        } catch (error){
+            error = error instanceof Error ? error : 
+                new Error(`Server response at readTransactionsFrom() returned "${error}"`);
+            console.log(error);
+            return error;
+        }
+    }, 
+    getVisitsFrom: async (startDate = yearStart, endDate = present) => {
+        try{
+            const client = new Client();
+            const patient = new Patient();
+            // the visits api calls a certain number of visits, starting with the most recent visit
+            // set the max_num query equal to the difference between present and startDate
+            let maxNum = Math.ceil((present.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
+    
+            // request a quantity of visit records less than or equal to the set maxNum
+            let response = await fetch(new Request(`https://axis.thejoint.com/rest/v11_20/Contacts/${ patient.id }/link/contacts_tj_visits_1?erased_fields=true&view=subpanel-for-contacts-contacts_tj_visits_1&fields=date_entered%2Cstatus%2Chas_carecard%2Cmy_favorite&max_num=${maxNum}&order_by=date_entered%3Adesc&filter%5B0%5D%5Bstatus%5D=Completed`), { headers: {"Oauth-Token": client.oauth} });
+            let visits = await response.json();
+    
+            // the response will include include visits outside the set date range
+            // create an array to store each visit date that matches the date range
+            let matchingVisits = [];
+            // records need to be requested for each matching visit
+            // create an array to store each visit record
+            let records = [];
+    
+            if(response.ok) {
+                if(Array.isArray(visits.records)){
+                    // remove visits that do not fall between the set startDate and endDate
+                    for(const visit of visits.records) {
+                        // format the visit date for evaluation
+                        let visitDate = new Date(visit.date_entered);
+                            visitDate = new Date(
+                                visitDate.getFullYear(), 
+                                visitDate.getMonth(), 
+                                visitDate.getDate());
+                        // store the matching visits of the matchingVisits array
+                        if(visitDate >= startDate && visitDate <= endDate) matchingVisits.push(visit.id);
+                    }
+                    // create an iteration counter
+                    let i = 0;
+                    // get detailed records for each matching visit
+                    for(const id of matchingVisits){
+                        // don't create an infinite loop
+                        if(i > maxNum) throw new Error(`visitArray exceeded expected length.`);
+                        else ++i;
+                        // get detailed records for the visit with the current visit id
+                        let res = await fetch(new Request(`https://axis.thejoint.com/rest/v11_20/TJ_Visits/${id}?erased_fields=true&view=record&fields=date_entered%2Cstatus%2Chas_carecard&viewed=1`), { headers: {"Oauth-Token": client.oauth} });
+                        // store visit details of the records array
+                        records.push(await res.json());
+                    }
+                } else { throw new Error(`Expected type of array, but received type of ${typeof visits.records} instead.`); }
+            } else { throw response.status; }
+    
+            // some details are not included of these records
+            // make a separate request to get diagnosis, procedure, and const information
+            // ! some of this is inferred or incomplete information
+            let detailedVisits = await getDetailedVisitsFrom(startDate, endDate);
+    
+            // for each record, merge the visit details
+            records.forEach((record, i) => {
+                console.log("Test:", record.id, detailedVisits);
+                // hopefully they're of the same order
+                if(record.id === detailedVisits[i].id){
+                    // merge
+                    Object.assign(record, detailedVisits[i]);
+                    console.log("Matched:", record);
+                } else {
+                    // if they're not of the same order, check each visit id for a match
+                    for(const detailedVisit of detailedVisits){
+                        // and merge them if they match
+                        if(record.id === detailedVisit.id) {
+                            Object.assign(record, detailedVisit);
+                            console.log("Out-of-order Match:", record);
+                        } 
+                        // ? what if they don't match
+                    }
+                }
+            });
+    
+            // return an array of all visit records between startDate and endDate
+            return records;
+    
+        } catch (error){
+            error = error instanceof Error ? error : 
+                new Error(`Server response at readTransactionsFrom() returned "${error}"`);
+            console.log(error);
+            return error;
+        }
+    }
+}
+
+const build = {
+    dialog: () => {
+        // create the dialog container
+        let dialog = new Child("dialog")
+            .setId("extension-dialog")
+            .addClass(["axis-extension-surface"])
+            .appendTo(document.body);
+        // create a clear label for the dialog
+        // the user should know they are interfacing with an extension
+        new Child("span")
+            .addClass(["modal-label"])
+            .setInnerText("AXIS Extension")
+            .appendTo(dialog);
+        // create a button to close the dialog
+        new Button()
+            .addClass(["close-modal"])
+            .appendTo(dialog)
+            .getNode().addEventListener("click", async function (e) {
+                e.preventDefault();
+                fade(dialog.getNode(), false);
+            });
+        // there could be multiple extension features
+        // features are dependent on the current resource
+        switch(new Client().getCurrentResource()){
+            case "contacts":
+                // on the contacts page, the user can...
+                //* (1) generate a superbill for the current patient
+                let superbillTool = new Child("div").addClass().appendTo(dialog).getNode();
+                // create a date range selector
+                let superbillDateRange = new Child("div").addClass(["flex-row"])
+                    .appendTo(superbillTool).getNode();
+                // add start date text field to date range selector
+                let startDateTextfield = new Textfield("Start Date")
+                    .setType("date").appendTo(superbillDateRange);
+                // add end date text field to date range selector
+                let endDateTextfield = new Textfield("End Date")
+                    .setType("date").appendTo(superbillDateRange);
+                // add a button to trigger superbill generation
+                new Button("Print Superbill")
+                    .addClass(["surface-button", "width--full"])
+                    .appendTo(dialog)
+                    .getNode().addEventListener("click", async function (e){
+                        e.preventDefault();
+                        // remove the dialog
+                        fade(dialog.getNode(), false);
+                        // build a sheet for the superbill
+                        let sheet = buildExtensionSheet();
+                        // TODO: show status
+                        // TODO: append superbill
+                        // append the superbill to the sheet
+                        // sheet.getNode().append(generateSuperbill(
+                        //     startDateTextfield.getNode().value, 
+                        //     endDateTextfield.getNode().value
+                        // ));
+                        generateSuperbill();
+                    });
+                break;
+            default:
+                // no features are available for the current page
+                // TODO: tell the user
+                break;
+        }
+        // show dialog (fade of)
+        fade(dialog.getNode(), true);
+    },
+    sheet: () => {
+        let sheet = new Child("div")
+            .setId(["extension-sheet"])
+            .addClass(["axis-extension-surface"])
+            .appendTo(document.body);
+        // create a clear label for the sheet
+        new Child("span")
+            .addClass(["modal-label"])
+            .setInnerText("AXIS Extension")
+            .appendTo(sheet);
+        // create a button to close the sheet
+        new Button()
+            .addClass(["close-modal"])
+            .appendTo(sheet)
+            .getNode().addEventListener("click", async function (e) {
+                e.preventDefault();
+                // slide sheet out to right
+                sheetSlide(sheet.getNode(), "right", false);
+            });
+        // slide the sheet of from right
+        sheetSlide(sheet.getNode(), "right", true);
+        return sheet;
+    },
+    page: (title = "Untitled", content = HTMLCollection) => {
 
         // create a doc inside of the preview container
-        let previewDocument = new Child().addClass(["preview__document"])
+        let previewDocument = new Child().addClass(["page-preview"])
             .appendTo(preview.getNode());
-
+    
         // create a header for the previewed document
-        let previewHeader = new Child().addClass(["document__header"])
+        let previewHeader = new Child().addClass(["page__header"])
             .appendTo(previewDocument.getNode());
         // create a footer for the previewed document
-        let previewFooter = new Child().addClass(["document__footer"])
+        let previewFooter = new Child().addClass(["page__footer"])
             .setInnerText()
             .appendTo(previewDocument.getNode());
-
+    
         // get clinic details to populate the header and footer
         let clinicDetails = await getClinicDetails(new Client().getCurrentClinic());
-
+    
         // grab the nodes for both the header and footer
         let headerNode = previewHeader.getNode(),
             footerNode = previewFooter.getNode()
-
+    
         // populate the header with a logo, title, and topline
         new Child("img").addAttribute({src: "assets/joint_logo.png"})
             .addClass(["logo"])
             .appendTo(headerNode);
-        new Child("h1").setInnerText(this.title)
+        new Child("h1").setInnerText(title)
             .addClass(["title"])
             .appendTo(headerNode);
         new Child("span").addClass(["topline"])
             .setInnerText(`This clinic is owned and operated by ${clinicDetails.pc} and managed by ${clinicDetails.business_entity}.`)
             .appendTo(headerNode);
-        
+    
         // populate the footer with this clinic's name, address, phone, and email
         new Child("span")
             .addClass(["company"])
             .setInnerText(`The Joint Chiropractic - ${clinicDetails.name}`)
             .appendTo(footerNode);
-        new Child("address")
+        new Child("span")
             .addClass(["clinic"])
             .setInnerText(`${clinicDetails.billing_address_street} ${clinicDetails.billing_address_city}, ${clinicDetails.billing_address_state} ${clinicDetails.billing_address_postalcode}`)
             .appendTo(footerNode);
@@ -413,49 +825,28 @@ class Preview {
             .addClass(["contact"])
             .setInnerText(`${clinicDetails.phone1} | ${clinicDetails.email}`)
             .appendTo(footerNode);
-    }
-    async addSection(children = [], classList = []){
-        // a section cannot be added if the this.create() has not been called
-        if(document.querySelector(`${this.id}`) === null) 
-            throw new Error("Method create() must be called on Preview before a new section can be added.");
-        // create a section container
-        let section = new Child()
-            .addClass(["section"]).addClass(classList)
-            .appendTo(document.querySelector(`${this.id}`));
-        // add this section to this object
-        this.sectionList.push(section);
-        // populate the section container with the supplied children 
-        for(const child in children) child.appendTo(section);
-        return this;
-    }
-    async appendTo(parent){
-        let preview = await this.create();
-        parent.append(preview);
-        return this;
-    }
-    setId(id = this.id){
-        this.id = id;
-        return this;
-    }
-    setTitle(title = "Untitled"){
-        this.title = title;
-        return this;
+    
+        // create a body div within the page and return it as a node
+        return {
+            title: title,
+            body: new Child('div').addClass(["page__body"]).appendTo(previewDocument.getNode()).getNode()
+        };
     }
 }
 
-class Progressbar {
-    constructor(){
-        this.progress = 0;
-    }
-    appendTo(parent){
-
-    }
-    setProgress(value){
-        this.progress = value;
+const utilities = {
+    getToday: new Date(),
+    getPresentYearStart: new Date(new Date().getFullYear, 0, 1),
+    getRandomId: () => {
+        let letters = ["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z"];
+        let leadingLetters = "";
+        for(var i = 0; i < 4; ++i) leadingLetters += letters[Math.floor(Math.random() * 26)];
+        let cryptoString = window.crypto.getRandomValues(new Uint32Array(1))[0].toString(16);
+        return leadingLetters + cryptoString;
     }
 }
 
-// listen for user to click the 
+// listen for user to click the action (extension) button
 chrome.runtime.onMessage.addListener(function(message, sender, response){
     // access the source of the message
     // it could come from other places (?)
@@ -471,142 +862,7 @@ chrome.runtime.onMessage.addListener(function(message, sender, response){
     }
 });
 
-function buildExtensionDialog(){
-    // create the dialog container
-    let dialog = new Child("dialog")
-        .setId("extension-dialog")
-        .addClass(["axis-extension-surface"])
-        .appendTo(document.body);
-    // create a clear label for the dialog
-    // the user should know they are interfacing with an extension
-    new Child("span")
-        .addClass(["modal-label"])
-        .setInnerText("AXIS Extension")
-        .appendTo(dialog);
-    // create a button to close the dialog
-    new Button()
-        .addClass(["close-modal"])
-        .appendTo(dialog)
-        .getNode().addEventListener("click", async function (e) {
-            e.preventDefault();
-            fade(dialog.getNode(), false);
-        });
-    // there could be multiple extension features
-    // features are dependent on the current resource
-    switch(new Client().getCurrentResource()){
-        case "contacts":
-            // on the contacts page, the user can...
-            //* (1) generate a superbill for the current patient
-            let superbillTool = new Child("div").addClass().appendTo(dialog).getNode();
-            // create a date range selector
-            let superbillDateRange = new Child("div").addClass(["flex-row"])
-                .appendTo(superbillTool).getNode();
-            // add start date text field to date range selector
-            let startDateTextfield = new Textfield("Start Date")
-                .setType("date").appendTo(superbillDateRange);
-            // add end date text field to date range selector
-            let endDateTextfield = new Textfield("End Date")
-                .setType("date").appendTo(superbillDateRange);
-            // add a button to trigger superbill generation
-            new Button("Print Superbill")
-                .addClass(["surface-button", "width--full"])
-                .appendTo(dialog)
-                .getNode().addEventListener("click", async function (e){
-                    e.preventDefault();
-                    // remove the dialog
-                    fade(dialog.getNode(), false);
-                    // build a sheet for the superbill
-                    let sheet = buildExtensionSheet();
-                    // TODO: show status
-                    // TODO: append superbill
-                    // append the superbill to the sheet
-                    // sheet.getNode().append(generateSuperbill(
-                    //     startDateTextfield.getNode().value, 
-                    //     endDateTextfield.getNode().value
-                    // ));
-                    generateSuperbill();
-                });
-            break;
-        default:
-            // no features are available for the current page
-            // TODO: tell the user
-            break;
-    }
-    // show dialog (fade of)
-    fade(dialog.getNode(), true);
-}
-
-function buildExtensionSheet(){
-    let sheet = new Child("div")
-        .setId(["extension-sheet"])
-        .addClass(["axis-extension-surface"])
-        .appendTo(document.body);
-    // create a clear label for the sheet
-    new Child("span")
-        .addClass(["modal-label"])
-        .setInnerText("AXIS Extension")
-        .appendTo(sheet);
-    // create a button to close the sheet
-    new Button()
-        .addClass(["close-modal"])
-        .appendTo(sheet)
-        .getNode().addEventListener("click", async function (e) {
-            e.preventDefault();
-            // slide sheet out to right
-            sheetSlide(sheet.getNode(), "right", false);
-        });
-    // slide the sheet of from right
-    sheetSlide(sheet.getNode(), "right", true);
-    return sheet;
-}
-
-function buildSuperbill(){
-    // create a new preview
-    let preview = new Preview("Superbill")
-        .appendTo(document.querySelector("#extension-sheet"));
-    // append the relevant sections to this 
-    let obj = {
-        id: () => {
-            let patient = new Patient();
-            let dob = patient.dob.split("/");
-            return `${ patient.name.initials + dob[0] + dob[1] + dob[2] }`;
-        },
-        self: template,
-        topline: topline,
-        documentTitle: documentTitle,
-        brandIcon: brandIcon,
-        metaInformation: metaInformation,
-        patientInformation: patientInformation,
-        accountSummary: accountSummary,
-        transactionHistory: transactionHistory,
-        visitHistory: visitHistory,
-        signatureLine: signatureLine,
-        footerLine: footerLine
-    }
-}
-
-async function fade(node = Element, fadeIn = false){
-    let animation;
-    if(fadeIn){
-        animation = node.animate([
-            {opacity: "0%"},{opacity: "100%"}
-        ], {duration: 250, iterations: 1, easing: "linear", fill: "forwards"});
-        await animation.finished;
-        animation.commitStyles();
-        animation.cancel();
-        // allow for chaining
-        return node;
-    } else {
-        animation = node.animate([
-            {opacity: "100%"},{opacity: "0%"}
-        ], {duration: 250, iterations: 1, easing: "linear", fill: "forwards"});
-        await animation.finished;
-        animation.commitStyles();
-        animation.cancel();
-        node.remove();
-    }
-}
-
+// ! under construction
 async function createSuperbill(startDate = yearStart, endDate = present){
 
     // get all transactions and visits between startDate and endDate
@@ -630,7 +886,7 @@ async function createSuperbill(startDate = yearStart, endDate = present){
 
     // build an object to access meta information, patient information, and account summary
     let lists = [
-        {
+        {   
             content: [
                 {label: "Issue Date", value: present},
                 {label: "Period Start", value: startDate},
@@ -639,7 +895,8 @@ async function createSuperbill(startDate = yearStart, endDate = present){
                 {label: "Prepared By", value: client.userData.username}
             ]
         },
-        {
+        {   
+            title: "Patient Information",
             content: [
                 {label: "Name", value: patient.name.fullName},
                 {label: "Date of Birth", value: `${patient.dob} (age ${patient.age})`},
@@ -649,6 +906,7 @@ async function createSuperbill(startDate = yearStart, endDate = present){
             ]
         },
         {
+            title: "Account Summary",
             // TODO: check that each of these summary items match what the table says
             // ! this will be important because the table is editable (in case something is incorrect)
             // ? should the table be editable
@@ -677,13 +935,21 @@ async function createSuperbill(startDate = yearStart, endDate = present){
             ]
         }
     ];
-    // for each list, add a li for each list content item
-    // populate each li with a label and a value
-    // ! stopped here
+   
+    // for each list of lists
     for(const list of lists){
+        // the addSection() method on Preview accepts children listed in an array
         let children = [];
+        // create an element containing the title of this list, if present
+        let title;
+        if(typeof list.title === "string") title = new Child().setInnerText(list.title);
+        // iterate over the content of this list
         list.content.forEach(item => {
-            let label = new Child("span").setInnerText(item.label)
+            // add a li for each list content item
+            let li = new Child("li");
+            // create 
+            let label = new Child("span").setInnerText(item.label);
+            let value = new Child("span").setInnerText(typeof item.value === "function" ? item.value() : item.value);
             children.push()
         });
         let section = preview.addSection(children, [])
@@ -771,323 +1037,4 @@ async function createSuperbill(startDate = yearStart, endDate = present){
 
     // populate the superbill signature line
     // populate the superbill footer line
-}
-
-async function getClinicDetails(clinicName = ""){
-    try{
-        // format clinic name for url query
-        // create a string to store the clinic name
-        // create an iteration counter
-        let urlQuery = "", i = 0;
-        let clinicNameWordsArray = clinicName.split(" ");
-        for(const word of clinicNameWordsArray){
-            if(clinicNameWordsArray.length - 1 > i) { 
-                urlQuery += `${word}%20`; ++i;
-            } else { urlQuery += `${word}`; }
-        }
-
-        // first request to get clinic id
-        let firstResponse = await fetch(new Request(`https://axis.thejoint.com/rest/v11_20/TJ_Clinics?erased_fields=true&view=list&fields=following%2Cmy_favorite&max_num=2&order_by=date_modified%3Adesc&filter%5B0%5D%5Bname%5D%5B%24starts%5D=${urlQuery}`), {headers: { "Oauth-Token": new Client().oauth }});
-
-        // create a variable to store the clinic id
-        let clinicId = "";
-
-        // process request response and set value of clinicId
-        if(firstResponse.ok) {
-            let clinic = await firstResponse.json();
-            if(clinic.records.length === 1) clinicId = clinic.records[0].id;
-            else throw new Error(`Expected 1 results, but received ${clinic.records.length} results.`);
-        } else { throw `status: ${firstResponse.status}`; }
-
-        // second request to get detailed information for clinic
-        let secondResponse = await fetch(new Request(`https://axis.thejoint.com/rest/v11_20/TJ_Clinics/${clinicId}?erased_fields=true&view=record&fields=my_favorite&viewed=1`), {headers: { "Oauth-Token": new Client().oauth }});
-
-        // process second request and return detailed clinic information
-        if(secondResponse.ok) return await secondResponse.json(); 
-        else throw `status: ${secondResponse.status}`;
-    } catch (error) {
-        error = error instanceof Error ? error : 
-            new Error(`Server response at getClinicDetails() returned "${error}"`);
-        console.log(error);
-        return error;
-    }
-}
-
-async function getDetailedVisitsFrom(startDate = yearStart, endDate = present){
-    try{
-        const client = new Client();
-        const patient = new Patient();
-        // the visits api calls a certain number of visits, starting with the most recent visit
-        // set the max_num query equal to the difference between present and startDate
-        let maxNum = Math.ceil((present.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
-
-        // request a quantity of visit records less than or equal to the set maxNum
-        let response = await fetch(new Request(`https://axis.thejoint.com/rest/v11_20/Contacts/${ patient.id }/link/contacts_tj_visits_1?erased_fields=true&max_num=${maxNum}`), { headers: {"Oauth-Token": client.oauth} });
-        let visits = await response.json();
-
-        // the response will include include visits outside the set date range
-        // create an array to store each visit date that matches the date range
-        let matchingVisits = [];
-
-        // only store visits that fall between the set startDate and endDate
-        if(response.ok) {
-            if(Array.isArray(visits.records)){
-                for(const visit of visits.records) {
-                    // format the visit date for evaluation
-                    let visitDate = new Date(visit.date_entered);
-                        visitDate = new Date(
-                            visitDate.getFullYear(), 
-                            visitDate.getMonth(), 
-                            visitDate.getDate());
-                    // store the matching visits of the matchingVisits array
-                    if(visitDate >= startDate && visitDate <= endDate) matchingVisits.push(visit);
-                }
-            } else { throw new Error(`Expected type of array, but received type of ${typeof visits.records} instead.`); }
-        } else { throw response.status; }
-
-        // create an array to store detailed visit information
-        let detailedVisits = []
-        for(const match of matchingVisits){
-            // create variable to store each desired information field
-            let visitObject = {
-                id: match.id,
-                diagnosis: [], 
-                procedure: "",
-                visitCost: match.visit_price
-            }
-
-            // to determine the correct procedure code, count how many regions were manipulated
-            // create an array of keys corresponding to adjusted segments
-            let segmentList = ["spinal_c0_c", "spinal_c1", "spinal_c2", "spinal_c3", "spinal_c4", "spinal_c5", "spinal_c6", "spinal_c7", "t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8", "t9", "t10", "t11", "t12", "l1", "l2", "l3", "l4", "l5", "rpelvis", "lpelvis", "rsacrum", "lsacrum", "shoulderr", "shoulderl", "elbowr", "elbowl", "wristr", "wristl", "hipr", "hipl", "kneer", "kneel", "ankler", "anklel", "ribsr", "ribsl"];
-            // create an iteration counter and a place to store manipulated regions
-            let i = 0, spinalRegions = [], extremityRegions = [];
-            // for each possible segment, check to see if has been manipulated
-            for(const segment of segmentList){
-                if(String(match[segment]).length != 0 && i < 48){
-                    // determine the region that the joint is of and push the region to the manipulatedRegions array
-                    if(i === 0) { spinalRegions.push("head"); }
-                    if(i > 0 && i <= 7) { spinalRegions.push("cervical"); i = 7; }
-                    if(i > 7 && i <= 29) { spinalRegions.push("thoracic"); i = 29; }
-                    if(i > 29 && i <= 34) { spinalRegions.push("lumbar"); i = 34; }
-                    if(i > 34 && i <= 36) { spinalRegions.push("pelvis"); i = 36; }
-                    if(i === 37) { spinalRegions.push("sacrum"); }
-                    if(i > 37 && i <= 42) { extremityRegions.push("upper extremity"); i = 41; }
-                    if(i > 42) { extremityRegions.push("lower extremity"); i = 47; }
-                }
-                // increment the counter
-                ++i;
-            }
-            // 98940 is used if two or fewer spinal regions were manipulated
-            if(spinalRegions.length < 3) visitObject.procedure = "98940 CHIROPRACTIC MANIPULATIVE TREATMENT, SPINAL (1-2 REGIONS)";
-            // 98941 is used if two or more spinal regions were manipulated
-            if(spinalRegions.length > 2 ) visitObject.procedure = "98941 CHIROPRACTIC MANIPULATIVE TREATMENT, SPINAL (3-4 REGIONS)";
-            // 98942 is used if five or more spinal regions were manipulated
-            if(spinalRegions.length > 5 ) visitObject.procedure = "98942 CHIROPRACTIC MANIPULATIVE TREATMENT, SPINAL (5+ REGIONS)";
-            // 98943 is used if no spinal regions were manipulated and any extremities were
-            if(spinalRegions.length === 0 && extremityRegions > 0) visitObject.procedure = "98943 CHIROPRACTIC MANIPULATIVE TREATMENT, EXTRASPINAL";
-
-            // to determine the correct diagnoses, count how many regions include a subluxation
-            // reset the counter
-            i = 0;
-            // update the segmentList to be consistent with axis naming conventions for subluxation levels
-            segmentList = ["sub_c0_c", "sub_c1", "sub_c2", "sub_c3", "sub_c4", "sub_c5", "sub_c6", "sub_c7", "sub_t1", "sub_t2", "sub_t3", "sub_t4", "sub_t5", "sub_t6", "sub_t7", "sub_t8", "sub_t9", "sub_t10", "sub_t11", "sub_t12", "sub_l1", "sub_l2", "sub_l3", "sub_l4", "sub_l5", "sub_pelvis-c", "sub_sacrum"];
-            // check each segment for subluxation 
-            for(const segment of segmentList){
-                if(String(match[segment]) === "1" && i < 36){
-                    // determine the region that the joint is of and push the region to the manipulatedRegions array
-                    if(i === 0) { visitObject.diagnosis.push("M99.00 SEGMENTAL AND SOMATIC DYSFUNCTION OF HEAD REGION"); }
-                    if(i > 0 && i <= 7) { visitObject.diagnosis.push("M99.01 SEGMENTAL AND SOMATIC DYSFUNCTION OF CERVICAL REGION"); i = 7; }
-                    if(i > 7 && i <= 29) { visitObject.diagnosis.push("M99.02 SEGMENTAL AND SOMATIC DYSFUNCTION OF THORACIC REGION"); i = 29; }
-                    if(i > 29 && i <= 34) { visitObject.diagnosis.push("M99.03 SEGMENTAL AND SOMATIC DYSFUNCTION OF LUMBAR REGION"); i = 34; }
-                    if(i === 35) { visitObject.diagnosis.push("M99.04 SEGMENTAL AND SOMATIC DYSFUNCTION OF SACRAL REGION"); }
-                    if(i === 36) { visitObject.diagnosis.push("M99.05 SEGMENTAL AND SOMATIC DYSFUNCTION OF PELVIC REGION"); }
-                }
-                // increment the counter
-                ++i;
-            }
-            detailedVisits.push(visitObject);
-        }
-        // return detailed visit information
-        return detailedVisits;
-
-    } catch (error){
-        error = error instanceof Error ? error : 
-            new Error(`Server response at readTransactionsFrom() returned "${error}"`);
-        console.log(error);
-        return error;
-    }
-}
-
-async function getTransactionsFrom(startDate = yearStart, endDate = present){
-    try{
-        // check that the input values are *probably* valid
-        // ? what could go wrong
-        if(startDate instanceof Date === false) 
-            throw new Error(`Expected instance of Date at parameter startDate.`);
-        if(endDate instanceof Date === false) 
-            throw new Error(`Expected instance of Date at parameter endDate.`);
-
-        // create variables for start date, month, and year
-        let ds = new Date(startDate).getDate().toString();
-        if(String(ds).length < 2) ds = `0${ds}`;
-        let ms = new Date(startDate).getMonth() + 1; 
-            ms = ms.toString();
-        if(String(ms).length < 2) ms = `0${ms}`;
-        let ys = new Date(startDate).getFullYear().toString();
-        // create variables for end date, month, and year
-        let de = new Date(endDate).getDate().toString();
-        if(String(de).length < 2) de = `0${de}`;
-        let me = new Date(endDate).getMonth() + 1;
-            me = me.toString();
-        if(String(me).length < 2) me = `0${me}`;
-        let ye = new Date(endDate).getFullYear().toString();
-
-        // request transaction history
-        let response = await fetch(new Request(`https://axis.thejoint.com/rest/v11_20/Contacts/${ new Patient().id }/custom_link/contacts_transactions_refunds?filter%5B0%5D%5Bdate_entered%5D%5B%24dateBetween%5D%5B%5D=${ys}-${ms}-${ds}&filter%5B0%5D%5Bdate_entered%5D%5B%24dateBetween%5D%5B%5D=${ye}-${me}-${de}`), { headers: {"Oauth-Token": new Client().oauth} });
-        // process and return response
-        if(response.ok) {
-            let obj = await response.json();
-            return obj.records;
-        }
-        else { throw `status: ${response.status}`; }
-    } catch (error){
-        error = error instanceof Error ? error : 
-            new Error(`Server response at readTransactionsFrom() returned "${error}"`);
-        console.log(error);
-        return error;
-    }
-}
-
-async function getVisitsFrom(startDate = yearStart, endDate = present){
-    try{
-        const client = new Client();
-        const patient = new Patient();
-        // the visits api calls a certain number of visits, starting with the most recent visit
-        // set the max_num query equal to the difference between present and startDate
-        let maxNum = Math.ceil((present.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
-
-        // request a quantity of visit records less than or equal to the set maxNum
-        let response = await fetch(new Request(`https://axis.thejoint.com/rest/v11_20/Contacts/${ patient.id }/link/contacts_tj_visits_1?erased_fields=true&view=subpanel-for-contacts-contacts_tj_visits_1&fields=date_entered%2Cstatus%2Chas_carecard%2Cmy_favorite&max_num=${maxNum}&order_by=date_entered%3Adesc&filter%5B0%5D%5Bstatus%5D=Completed`), { headers: {"Oauth-Token": client.oauth} });
-        let visits = await response.json();
-
-        // the response will include include visits outside the set date range
-        // create an array to store each visit date that matches the date range
-        let matchingVisits = [];
-        // records need to be requested for each matching visit
-        // create an array to store each visit record
-        let records = [];
-
-        if(response.ok) {
-            if(Array.isArray(visits.records)){
-                // remove visits that do not fall between the set startDate and endDate
-                for(const visit of visits.records) {
-                    // format the visit date for evaluation
-                    let visitDate = new Date(visit.date_entered);
-                        visitDate = new Date(
-                            visitDate.getFullYear(), 
-                            visitDate.getMonth(), 
-                            visitDate.getDate());
-                    // store the matching visits of the matchingVisits array
-                    if(visitDate >= startDate && visitDate <= endDate) matchingVisits.push(visit.id);
-                }
-                // create an iteration counter
-                let i = 0;
-                // get detailed records for each matching visit
-                for(const id of matchingVisits){
-                    // don't create an infinite loop
-                    if(i > maxNum) throw new Error(`visitArray exceeded expected length.`);
-                    else ++i;
-                    // get detailed records for the visit with the current visit id
-                    let res = await fetch(new Request(`https://axis.thejoint.com/rest/v11_20/TJ_Visits/${id}?erased_fields=true&view=record&fields=date_entered%2Cstatus%2Chas_carecard&viewed=1`), { headers: {"Oauth-Token": client.oauth} });
-                    // store visit details of the records array
-                    records.push(await res.json());
-                }
-            } else { throw new Error(`Expected type of array, but received type of ${typeof visits.records} instead.`); }
-        } else { throw response.status; }
-
-        // some details are not included of these records
-        // make a separate request to get diagnosis, procedure, and const information
-        // ! some of this is inferred or incomplete information
-        let detailedVisits = await getDetailedVisitsFrom(startDate, endDate);
-
-        // for each record, merge the visit details
-        records.forEach((record, i) => {
-            console.log("Test:", record.id, detailedVisits);
-            // hopefully they're of the same order
-            if(record.id === detailedVisits[i].id){
-                // merge
-                Object.assign(record, detailedVisits[i]);
-                console.log("Matched:", record);
-            } else {
-                // if they're not of the same order, check each visit id for a match
-                for(const detailedVisit of detailedVisits){
-                    // and merge them if they match
-                    if(record.id === detailedVisit.id) {
-                        Object.assign(record, detailedVisit);
-                        console.log("Out-of-order Match:", record);
-                    } 
-                    // ? what if they don't match
-                }
-            }
-        });
-
-        // return an array of all visit records between startDate and endDate
-        return records;
-
-    } catch (error){
-        error = error instanceof Error ? error : 
-            new Error(`Server response at readTransactionsFrom() returned "${error}"`);
-        console.log(error);
-        return error;
-    }
-}
-
-function randomId(){
-    let letters = ["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z"];
-    let leadingLetters = "";
-    for(var i = 0; i < 4; ++i) leadingLetters += letters[Math.floor(Math.random() * 26)];
-    let cryptoString = window.crypto.getRandomValues(new Uint32Array(1))[0].toString(16);
-    return leadingLetters + cryptoString;
-}
-
-async function sheetSlide(node = Element, from = "right", slideIn = false){
-    let keyframes, position;
-    if(slideIn) position = { start: 100, end: 0 };
-    else position = { start: 0, end: 100 };
-    switch(from){
-        case `top`:
-            keyframes = [
-                {transform: `translateY(${position.start}%)`}, 
-                {transform: `translateY(${position.end}%)`}
-            ];
-            break;
-        case `right`:
-            keyframes = [
-                {transform: `translateX(${position.start}%)`}, 
-                {transform: `translateX(${position.end}%)`}
-            ];
-            break;
-        case `bottom`:
-            keyframes = [
-                {transform: `translateY(-${position.start}%)`}, 
-                {transform: `translateY(-${position.end}%)`}
-            ];
-            break;
-        case `left`:
-            keyframes = [
-                {transform: `translateX(-${position.start}%)`}, 
-                {transform: `translateX(-${position.end}%)`}
-            ];
-            break;
-        default:
-            console.log(`Warning: "from" parameter at function slide() is invalid.`);
-            return node;
-    }
-    let animation = node.animate(keyframes,
-        {duration: 350, iterations: 1, easing: "linear", fill: "forwards"});
-    await animation.finished;
-    animation.commitStyles();
-    animation.cancel();
-    if(slideIn) return node;
-    else node.remove(0);
 }
