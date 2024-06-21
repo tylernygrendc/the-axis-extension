@@ -1,29 +1,9 @@
 class Button {
     constructor(label = ""){
-        this.id = randomId();
+        this.id = utilities.getRandomId();
         this.classList = ["button"];
         this.attributes = {};
         this.label = label;
-    }
-    addClass(array = []){
-        if(Array.isArray(array)) for(const str of array) this.classList.push(str);
-        else this.classList.push(array.toString());
-        return this;
-    }
-    addAttribute(object = {}){
-        switch(typeof object) {
-            case "object":
-                if(Array.isArray(object)) console.log(`Warning: addAttribute() method on Button expects parameter type of object but was passed type of array instead. Attributes were not be applied to Button object:`, this);
-                else Object.assign(this.attributes, object);
-                break;
-            case "string":
-                Object.assign(this.attributes, { [object]: "" });
-                break;
-            default:
-                console.log(`Warning: addAttribute() method on Button expects parameter type of object but was passed type of ${ object } instead. Attributes were not be applied to Button object:`, this);
-                break;
-        }
-        return this;
     }
     appendTo(parent = document.body){
         let button = this.create();
@@ -35,20 +15,40 @@ class Button {
         // create the button
         let button = new Child("button")
             .setId(this.id)
-            .addClass(this.classList)
+            .setClassList(this.classList)
             .appendTo(document.body);
         // add children button
         new Child("div")
-            .addClass(["button__state"])
+            .setClassList(["button__state"])
             .appendTo(button);
         new Child("span")
-            .addClass(["button__label"])
+            .setClassList(["button__label"])
             .setInnerText(this.label)
             .appendTo(button);
         return document.querySelector(`#${button.id}`);
     }
     getNode(){
         return document.querySelector(`#${this.id}`);
+    }
+    setAttribute(object = {}){
+        switch(typeof object) {
+            case "object":
+                if(Array.isArray(object)) console.log(`Warning: setAttribute() method on Button expects parameter type of object but was passed type of array instead. Attributes were not be applied to Button object:`, this);
+                else Object.assign(this.attributes, object);
+                break;
+            case "string":
+                Object.assign(this.attributes, { [object]: "" });
+                break;
+            default:
+                console.log(`Warning: setAttribute() method on Button expects parameter type of object but was passed type of ${ object } instead. Attributes were not be applied to Button object:`, this);
+                break;
+        }
+        return this;
+    }
+    setClassList(array = []){
+        if(Array.isArray(array)) for(const str of array) this.classList.push(str);
+        else this.classList.push(array.toString());
+        return this;
     }
     setId(str=""){
         this.id = str;
@@ -58,46 +58,14 @@ class Button {
         this.label = str;
         return this;
     }
-    update(){
-        let outdated = document.querySelector(`#${this.id}`);
-        let updated = this.create();
-        outdated.replaceWith(updated);
-        return this;
-    }
 }
 class Child {
     constructor(tag = "div"){
         this.tag = tag;
-        this.id = randomId();
+        this.id = utilities.getRandomId();
         this.classList = [];
         this.attributes = {};
         this.innerText = "";
-        this.children = [];
-    }
-    addAttribute(object = {}){
-        switch(typeof object) {
-            case "object":
-                if(Array.isArray(object)) console.log(`Warning: addAttribute() method on Child expects parameter type of object but was passed type of array instead. Attributes were not be applied to Child object:`, this);
-                else Object.assign(this.attributes, object);
-                break;
-            case "string":
-                Object.assign(this.attributes, { [object]: "" });
-                break;
-            default:
-                console.log(`Warning: addAttribute() method on Child expects parameter type of object but was passed type of ${ object } instead. Attributes were not be applied to Child object:`, this);
-                break;
-        }
-        return this;
-    }
-    addChildren(array = []){
-        if(Array.isArray(array)) for(const obj of array) this.children.push(obj);
-        else this.children.push(array);
-        return this;
-    }
-    addClass(array = []){
-        if(Array.isArray(array)) for(const str of array) this.classList.push(str);
-        else this.classList.push(array.toString());
-        return this;
     }
     appendTo(parent = document.body){
         let child = this.create();
@@ -137,6 +105,26 @@ class Child {
     getParent(){
         return document.querySelector(`#${this.id}`).parentElement;
     }
+    setAttribute(object = {}){
+        switch(typeof object) {
+            case "object":
+                if(Array.isArray(object)) console.log(`Warning: setAttribute() method on Child expects parameter type of object but was passed type of array instead. Attributes were not be applied to Child object:`, this);
+                else Object.assign(this.attributes, object);
+                break;
+            case "string":
+                Object.assign(this.attributes, { [object]: "" });
+                break;
+            default:
+                console.log(`Warning: setAttribute() method on Child expects parameter type of object but was passed type of ${ object } instead. Attributes were not be applied to Child object:`, this);
+                break;
+        }
+        return this;
+    }
+    setClassList(array = []){
+        if(Array.isArray(array)) for(const str of array) this.classList.push(str);
+        else this.classList.push(array.toString());
+        return this;
+    }
     setId(str=""){
         this.id = str;
         return this;
@@ -148,8 +136,8 @@ class Child {
     objectify(node){
         return new Child(node.tagName)
             .setId(node.id)
-            .addClass(node.classList)
-            .addAttribute(this.getAttributes(node))
+            .setClassList(node.classList)
+            .setAttribute(this.getAttributes(node))
             .setInnerText(node.innerText);
     }
     update(){
@@ -183,33 +171,13 @@ class Client {
 
 class Textfield {
     constructor(label = "", isParagraph = false){
-        this.id = randomId();
+        this.id = utilities.getRandomId();
         this.name = label;
         this.isParagraph = isParagraph;
         this.classList = ["text-field"];
         this.attributes = {type: "text", name: label};
         this.label = label;
         this.hint = false;
-    }
-    addClass(array = []){
-        if(Array.isArray(array)) for(const str of array) this.classList.push(str);
-        else this.classList.push(array.toString());
-        return this;
-    }
-    addAttribute(object = {}){
-        switch(typeof object) {
-            case "object":
-                if(Array.isArray(object)) console.log(`Warning: addAttribute() method on Textfield expects parameter type of object but was passed type of array instead. Attributes were not be applied to Textfield object:`, this);
-                else Object.assign(this.attributes, object);
-                break;
-            case "string":
-                Object.assign(this.attributes, { [object]: "" });
-                break;
-            default:
-                console.log(`Warning: addAttribute() method on Textfield expects parameter type of object but was passed type of ${ object } instead. Attributes were not be applied to Textfield object:`, this);
-                break;
-        }
-        return this;
     }
     appendTo(parent = document.body){
         let textfield = this.create();
@@ -221,25 +189,45 @@ class Textfield {
         // create the textfield
         let textfieldContainer = new Child("div")
             .setId(this.id)
-            .addClass(this.classList)
+            .setClassList(this.classList)
             .appendTo(document.body);
         // add label and input to textfield
         new Child("label")
-            .addAttribute({for: this.id})
-            .addClass(["text-field__label"])
+            .setAttribute({for: this.id})
+            .setClassList(["text-field__label"])
             .setInnerText(this.label)
             .appendTo(textfieldContainer);
         // input can also be a textarea for paragraph responses
         let input = this.isParagraph ? new Child("textarea"): new Child("input");
-            input.addAttribute(this.attributes)
-                .addClass(["text-field__input"])
+            input.setAttribute(this.attributes)
+                .setClassList(["text-field__input"])
                 .appendTo(textfieldContainer);
         // add a hint element if there is a hint
         if(this.hint) new Child("span")
-            .addClass(["text-field__hint"])
+            .setClassList(["text-field__hint"])
             .setInnerText(this.hint)
             .appendTo(textfieldContainer);
         return document.querySelector(`#${textfieldContainer.id}`);
+    }
+    setAttribute(object = {}){
+        switch(typeof object) {
+            case "object":
+                if(Array.isArray(object)) console.log(`Warning: setAttribute() method on Textfield expects parameter type of object but was passed type of array instead. Attributes were not be applied to Textfield object:`, this);
+                else Object.assign(this.attributes, object);
+                break;
+            case "string":
+                Object.assign(this.attributes, { [object]: "" });
+                break;
+            default:
+                console.log(`Warning: setAttribute() method on Textfield expects parameter type of object but was passed type of ${ object } instead. Attributes were not be applied to Textfield object:`, this);
+                break;
+        }
+        return this;
+    }
+    setClassList(array = []){
+        if(Array.isArray(array)) for(const str of array) this.classList.push(str);
+        else this.classList.push(array.toString());
+        return this;
     }
     setHint(str=""){
         this.hint = str;
@@ -464,13 +452,13 @@ const axis = {
             return error;
         }
     },
-    getDetailedVisitsFrom: async (startDate = yearStart, endDate = present) => {
+    getDetailedVisits: async (startDate = dateTime.presentYearStart, endDate = dateTime.today) => {
         try{
             const client = new Client();
             const patient = new Patient();
             // the visits api calls a certain number of visits, starting with the most recent visit
             // set the max_num query equal to the difference between present and startDate
-            let maxNum = Math.ceil((present.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
+            let maxNum = Math.ceil((dateTime.today.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
     
             // request a quantity of visit records less than or equal to the set maxNum
             let response = await fetch(new Request(`https://axis.thejoint.com/rest/v11_20/Contacts/${ patient.id }/link/contacts_tj_visits_1?erased_fields=true&max_num=${maxNum}`), { headers: {"Oauth-Token": client.oauth} });
@@ -568,7 +556,7 @@ const axis = {
             return error;
         }
     },
-    getTransactionsFrom: async (startDate = yearStart, endDate = present) => {
+    getTransactions: async (startDate = dateTime.presentYearStart, endDate = dateTime.today) => {
         try{
             // check that the input values are *probably* valid
             // ? what could go wrong
@@ -607,13 +595,13 @@ const axis = {
             return error;
         }
     }, 
-    getVisitsFrom: async (startDate = yearStart, endDate = present) => {
+    getVisits: async (startDate = dateTime.presentYearStart, endDate = dateTime.today) => {
         try{
             const client = new Client();
             const patient = new Patient();
             // the visits api calls a certain number of visits, starting with the most recent visit
             // set the max_num query equal to the difference between present and startDate
-            let maxNum = Math.ceil((present.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
+            let maxNum = Math.ceil((dateTime.today.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
     
             // request a quantity of visit records less than or equal to the set maxNum
             let response = await fetch(new Request(`https://axis.thejoint.com/rest/v11_20/Contacts/${ patient.id }/link/contacts_tj_visits_1?erased_fields=true&view=subpanel-for-contacts-contacts_tj_visits_1&fields=date_entered%2Cstatus%2Chas_carecard%2Cmy_favorite&max_num=${maxNum}&order_by=date_entered%3Adesc&filter%5B0%5D%5Bstatus%5D=Completed`), { headers: {"Oauth-Token": client.oauth} });
@@ -657,7 +645,7 @@ const axis = {
             // some details are not included of these records
             // make a separate request to get diagnosis, procedure, and const information
             // ! some of this is inferred or incomplete information
-            let detailedVisits = await getDetailedVisitsFrom(startDate, endDate);
+            let detailedVisits = await axis.getDetailedVisits(startDate, endDate);
     
             // for each record, merge the visit details
             records.forEach((record, i) => {
@@ -697,21 +685,21 @@ const build = {
         // create the dialog container
         let dialog = new Child("dialog")
             .setId("extension-dialog")
-            .addClass(["axis-extension-surface"])
+            .setClassList(["axis-extension-surface"])
             .appendTo(document.body);
         // create a clear label for the dialog
         // the user should know they are interfacing with an extension
         new Child("span")
-            .addClass(["modal-label"])
+            .setClassList(["modal-label"])
             .setInnerText("AXIS Extension")
             .appendTo(dialog);
         // create a button to close the dialog
         new Button()
-            .addClass(["close-modal"])
+            .setClassList(["close-modal"])
             .appendTo(dialog)
             .getNode().addEventListener("click", async function (e) {
                 e.preventDefault();
-                fade(dialog.getNode(), false);
+                animation.fade(dialog.getNode(), false);
             });
         // there could be multiple extension features
         // features are dependent on the current resource
@@ -719,9 +707,9 @@ const build = {
             case "contacts":
                 // on the contacts page, the user can...
                 //* (1) generate a superbill for the current patient
-                let superbillTool = new Child("div").addClass().appendTo(dialog).getNode();
+                let superbillTool = new Child("div").setClassList().appendTo(dialog).getNode();
                 // create a date range selector
-                let superbillDateRange = new Child("div").addClass(["flex-row"])
+                let superbillDateRange = new Child("div").setClassList(["flex-row"])
                     .appendTo(superbillTool).getNode();
                 // add start date text field to date range selector
                 let startDateTextfield = new Textfield("Start Date")
@@ -731,14 +719,14 @@ const build = {
                     .setType("date").appendTo(superbillDateRange);
                 // add a button to trigger superbill generation
                 new Button("Print Superbill")
-                    .addClass(["surface-button", "width--full"])
+                    .setClassList(["surface-button", "width--full"])
                     .appendTo(dialog)
                     .getNode().addEventListener("click", async function (e){
                         e.preventDefault();
                         // remove the dialog
-                        fade(dialog.getNode(), false);
+                        animation.fade(dialog.getNode(), false);
                         // build a sheet for the superbill
-                        let sheet = buildExtensionSheet();
+                        let sheet = build.sheet();
                         // TODO: show status
                         // TODO: append superbill
                         // append the superbill to the sheet
@@ -746,7 +734,6 @@ const build = {
                         //     startDateTextfield.getNode().value, 
                         //     endDateTextfield.getNode().value
                         // ));
-                        generateSuperbill();
                     });
                 break;
             default:
@@ -754,89 +741,92 @@ const build = {
                 // TODO: tell the user
                 break;
         }
-        // show dialog (fade of)
-        fade(dialog.getNode(), true);
+        // show dialog (animation.fade of)
+        animation.fade(dialog.getNode(), true);
     },
     sheet: () => {
         let sheet = new Child("div")
             .setId(["extension-sheet"])
-            .addClass(["axis-extension-surface"])
+            .setClassList(["axis-extension-surface"])
             .appendTo(document.body);
         // create a clear label for the sheet
         new Child("span")
-            .addClass(["modal-label"])
+            .setClassList(["modal-label"])
             .setInnerText("AXIS Extension")
             .appendTo(sheet);
         // create a button to close the sheet
         new Button()
-            .addClass(["close-modal"])
+            .setClassList(["close-modal"])
             .appendTo(sheet)
             .getNode().addEventListener("click", async function (e) {
                 e.preventDefault();
                 // slide sheet out to right
-                sheetSlide(sheet.getNode(), "right", false);
+                animation.slide(sheet.getNode(), "right", false);
             });
         // slide the sheet of from right
-        sheetSlide(sheet.getNode(), "right", true);
+        animation.slide(sheet.getNode(), "right", true);
         return sheet;
     },
-    page: (title = "Untitled", content = HTMLCollection) => {
+    page: async (title = "Untitled", content = HTMLCollection) => {
 
         // create a doc inside of the preview container
-        let previewDocument = new Child().addClass(["page-preview"])
+        let previewDocument = new Child().setClassList(["page-preview"])
             .appendTo(preview.getNode());
     
         // create a header for the previewed document
-        let previewHeader = new Child().addClass(["page__header"])
+        let previewHeader = new Child().setClassList(["page__header"])
             .appendTo(previewDocument.getNode());
         // create a footer for the previewed document
-        let previewFooter = new Child().addClass(["page__footer"])
+        let previewFooter = new Child().setClassList(["page__footer"])
             .setInnerText()
             .appendTo(previewDocument.getNode());
     
         // get clinic details to populate the header and footer
-        let clinicDetails = await getClinicDetails(new Client().getCurrentClinic());
+        let clinicDetails = await axis.getClinicDetails(new Client().getCurrentClinic());
     
         // grab the nodes for both the header and footer
         let headerNode = previewHeader.getNode(),
             footerNode = previewFooter.getNode()
     
         // populate the header with a logo, title, and topline
-        new Child("img").addAttribute({src: "assets/joint_logo.png"})
-            .addClass(["logo"])
+        new Child("img").setAttribute({src: "assets/joint_logo.png"})
+            .setClassList(["logo"])
             .appendTo(headerNode);
         new Child("h1").setInnerText(title)
-            .addClass(["title"])
+            .setClassList(["title"])
             .appendTo(headerNode);
-        new Child("span").addClass(["topline"])
+        new Child("span").setClassList(["topline"])
             .setInnerText(`This clinic is owned and operated by ${clinicDetails.pc} and managed by ${clinicDetails.business_entity}.`)
             .appendTo(headerNode);
     
         // populate the footer with this clinic's name, address, phone, and email
         new Child("span")
-            .addClass(["company"])
+            .setClassList(["company"])
             .setInnerText(`The Joint Chiropractic - ${clinicDetails.name}`)
             .appendTo(footerNode);
         new Child("span")
-            .addClass(["clinic"])
+            .setClassList(["clinic"])
             .setInnerText(`${clinicDetails.billing_address_street} ${clinicDetails.billing_address_city}, ${clinicDetails.billing_address_state} ${clinicDetails.billing_address_postalcode}`)
             .appendTo(footerNode);
         new Child("span")
-            .addClass(["contact"])
+            .setClassList(["contact"])
             .setInnerText(`${clinicDetails.phone1} | ${clinicDetails.email}`)
             .appendTo(footerNode);
     
         // create a body div within the page and return it as a node
         return {
             title: title,
-            body: new Child('div').addClass(["page__body"]).appendTo(previewDocument.getNode()).getNode()
+            body: new Child('div').setClassList(["page__body"]).appendTo(previewDocument.getNode()).getNode()
         };
     }
 }
 
+const dateTime = {
+    today: new Date(),
+    presentYearStart: new Date(new Date().getFullYear, 0, 1)
+}
+
 const utilities = {
-    getToday: new Date(),
-    getPresentYearStart: new Date(new Date().getFullYear, 0, 1),
     getRandomId: () => {
         let letters = ["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z"];
         let leadingLetters = "";
@@ -856,21 +846,21 @@ chrome.runtime.onMessage.addListener(function(message, sender, response){
             // build the extension dialog
             // only if it isn't already part of the DOM
             // otherwise, remove the extension dialog
-            if(document.querySelector("#extension-dialog") === null) buildExtensionDialog();
+            if(document.querySelector("#extension-dialog") === null) build.dialog();
             else document.querySelector("#extension-dialog").remove();
             break;
     }
 });
 
 // ! under construction
-async function createSuperbill(startDate = yearStart, endDate = present){
+async function getStatementBody(startDate = dateTime.presentYearStart, endDate = dateTime.today){
 
     // get all transactions and visits between startDate and endDate
     let transactions, visits;
     try{
         if(startDate instanceof Date && endDate instanceof Date){
-            transactions = await getTransactionsFrom(startDate, endDate);
-            visits = await getVisitsFrom(startDate, endDate);
+            transactions = await axis.getTransactions(startDate, endDate);
+            visits = await axis.getVisits(startDate, endDate);
         }  else { throw new Error(`Parameter Instanceof Date is required at generateSuperbill().`); }
     } catch (error) { console.log(error); return error; }
 
@@ -888,7 +878,7 @@ async function createSuperbill(startDate = yearStart, endDate = present){
     let lists = [
         {   
             content: [
-                {label: "Issue Date", value: present},
+                {label: "Issue Date", value: dateTime.today},
                 {label: "Period Start", value: startDate},
                 {label: "Period End", value: endDate},
                 {label: "Reference Number", value: `${ patient.name.initials + patient.dob.split("/")[0] + patient.dob.split("/")[1] + patient.dob.split("/")[2] }`},
@@ -955,9 +945,9 @@ async function createSuperbill(startDate = yearStart, endDate = present){
         let section = preview.addSection(children, [])
 
         let li = new Child("li").appendTo(list.node);
-        new Child("span").addClass(["item__label"])
+        new Child("span").setClassList(["item__label"])
             .setInnerText(list.content.label).appendTo(li);
-        new Child("span").addClass(["item__value"])
+        new Child("span").setClassList(["item__value"])
             .setInnerText(list.content.value).appendTo(li);
     }
 
@@ -995,7 +985,7 @@ async function createSuperbill(startDate = yearStart, endDate = present){
             // create the semantic td element
             let cell = new Child("td").appendTo(row);
             // put an editable input element inside
-            new Child("input").addAttribute({type: "text"}).appendTo(cell)
+            new Child("input").setAttribute({type: "text"}).appendTo(cell)
                 // and set the value
                 .getNode().value = value;
         }
@@ -1029,7 +1019,7 @@ async function createSuperbill(startDate = yearStart, endDate = present){
             // create the semantic td element
             let cell = new Child("td").appendTo(row);
             // put an editable input element inside
-            new Child("input").addAttribute({type: "text"}).appendTo(cell)
+            new Child("input").setAttribute({type: "text"}).appendTo(cell)
                 // and set the value
                 .getNode().value = value;
         }
