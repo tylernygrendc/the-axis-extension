@@ -3,7 +3,7 @@
   --typeface: system-ui, "Segoe UI", Helvetica, Arial, sans-serif;
   --surface-color: #ffffff;
   --surface-contrast: #000000;
-  --on-surface: #505050;
+  --on-surface: #363735;
   --primary-color: #00b3be;
   --on-primary: #ffffff;
   --secondary-color: #ffb612;
@@ -43,7 +43,7 @@
   & .typescale--display {
     font-family: var(--typeface);
     font-size: 2.8rem;
-    font-weight: 400;
+    font-weight: normal;
     text-shadow: none;
     text-transform: none;
     text-decoration: none;
@@ -53,7 +53,7 @@
   & .typescale--headline {
     font-family: var(--typeface);
     font-size: 1.75rem;
-    font-weight: 400;
+    font-weight: normal;
     text-shadow: none;
     text-transform: none;
     text-decoration: none;
@@ -63,7 +63,7 @@
   & .typescale--title {
     font-family: var(--typeface);
     font-size: 1rem;
-    font-weight: 500;
+    font-weight: bolder;
     text-shadow: none;
     text-transform: none;
     text-decoration: none;
@@ -73,7 +73,7 @@
   & .typescale--body {
     font-family: var(--typeface);
     font-size: 0.875rem;
-    font-weight: 400;
+    font-weight: normal;
     text-shadow: none;
     text-transform: none;
     text-decoration: none;
@@ -83,7 +83,7 @@
   & .typescale--label {
     font-family: var(--typeface);
     font-size: 0.75rem;
-    font-weight: 500;
+    font-weight: normal;
     text-shadow: none;
     text-transform: none;
     text-decoration: none;
@@ -282,6 +282,7 @@
   position: fixed;
   inset: 0 0 0 auto;
   min-width: 24.5rem;
+  max-width: 800px;
   padding: 2rem 1rem 1rem 1rem;
   border-radius: var(--surface-corner) 0 0 var(--surface-corner);
   box-shadow: var(--surface-shadow);
@@ -308,61 +309,152 @@
   gap: 0.25rem;
 }
 
-#extension-superbill-template{
+#extension-preview{
   position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  width: 8.5in;
-  height: 11in;
-  padding: 1.5in 0.5in 0.5in 0.5in;
-  gap: 0.125in;
-  color: black;
-  background-color: white;
-  box-shadow: var(--surface-shadow);
+  height: 100%;
+  padding: 0.5rem;
+  overflow-y: scroll;
+
+  /* page styling */
+
+  .page{
+    position: relative;
+    width: calc(8.5 * 96px) !important;
+    height: calc(11 * 96px) !important;
+    aspect-ratio: 8.5 / 11;
+    margin-top: 0.5rem;
+    padding: 0.5in;
+    gap: 0.125in;
+    color: black;
+    background-color: white;
+    box-shadow: var(--surface-shadow);
+    zoom: 50%;
+
+    .page__header{
+      position: absolute;
+      inset: 0.5in 0.5in auto 0.5in;
+      height: 0.75in;
+      .logo{
+        position: absolute;
+        inset: 0 0 auto auto;
+        height: 100%;
+      }
+      .title{
+        position: absolute;
+        inset: auto auto 0 0;
+        min-width: 2in;
+        margin: 0;
+        padding: 0.25rem 0.5rem;
+        background-color: var(--on-surface);
+        color: var(--on-primary);
+      }
+      .topline{
+        position: absolute;
+        inset: 0 auto auto 0;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        color: var(--on-surface)
+      }
+    }
+    .page__body{
+      position: absolute;
+      inset: 0.5in 0.5in 1in 0.5in;
+      overflow: hidden;
+    }
+    &:has(.page__header) .page__body{
+      top: 1.3in;
+    }
+    .page__footer{
+      position: absolute;
+      inset: auto 0.5in 0.25in 0.5in;
+      display: flex;
+      flex-direction: column;
+      justify-items: center;
+      align-items: end;
+      > *{
+        line-height: 1;
+      }
+    }
+
+  }
 
   /* list styling */
 
   ul {
     display: flex;
     flex-direction: column;
-    align-items: start;
+    align-items: stretch;
     margin: 0;
     padding: 0;
     gap: 0.25rem;
     li{
+      display: flex;
+      flex-direction: row;
+      align-items: stretch;
       margin: 0;
       padding: 0;
+      gap: 0.25rem;
       list-style-type: none;
+      :first-child{
+        font-weight: bolder;
+      }
     }
   }
 
   /* table styling */
 
   table{
+    width: 100%;
+    border: 0;
     border: 1px solid var(--on-surface);
+    th{
+      font-weight: bolder;
+    }
     th, tr{
       display: flex;
       flex-direction: row;
       align-items: stretch;
+      border: 0;
       border-bottom: 1px solid var(--on-surface);
       padding: 0;
       gap: 0;
       td{
         flex: 1;
+        border: 0;
         border-right: 1px solid var(--on-surface);
+        padding: 0.25rem;
+        background-color: inherit;
         input{
           width: 100%;
           box-shadow: none;
           border: 0;
         }
+        &.column--wide{
+          flex: 2;
+        }
+        &.no-wrap{
+          white-space: nowrap;
+          overflow: hidden;
+        }
       }
       :last-child{
-        border-right: 0px
+        border-right: 0;
       }
     }
     :last-child{
       border-bottom: 0px;
+    }
+  }
+
+  /* superbill styling */
+  .superbill{
+    width: 100%;
+    display: grid;
+    grid-template-columns: 0.8fr 1fr;
+    grid-template-rows: repeat(auto-fit, auto);
+    .table{
+      grid-column: 1 / 3;
     }
   }
 }

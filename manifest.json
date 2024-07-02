@@ -1,11 +1,11 @@
 {
     "manifest_version": 3,
-    "name": "Superbill Generator for AXIS",
-    "description": "Automatically generate a superbill in AXIS.",
+    "name": "Praktiki",
+    "description": "The AXIS Extension",
     "version": "0.10",
     "action": {
-        "default_icon": "assets/axis_extension.png",
-        "default_title": "AXIS Extension"
+        "default_icon": "assets/app-icon--small.png",
+        "default_title": "Praktiki"
     },
     "content_scripts": [
         {
@@ -19,5 +19,11 @@
     "permissions": ["activeTab"],
     "background":{
         "service_worker": "background.js"
+    },
+    "web_accessible_resources": [
+    {
+      "resources": [ "assets/joint-logo--small.png" ],
+      "matches": [ "https://axis.thejoint.com/*" ]
     }
+  ]
 }

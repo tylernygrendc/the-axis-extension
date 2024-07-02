@@ -1,64 +1,3 @@
-class Button {
-    constructor(label = ""){
-        this.id = utilities.getRandomId();
-        this.classList = ["button"];
-        this.attributes = {};
-        this.label = label;
-    }
-    appendTo(parent = document.body){
-        let button = this.create();
-        if(parent === document.body) parent.appendChild(button);
-        else document.querySelector(`#${parent.id}`).appendChild(button);
-        return this;
-    }
-    create(){
-        // create the button
-        let button = new Child("button")
-            .setId(this.id)
-            .setClassList(this.classList)
-            .appendTo(document.body);
-        // add children button
-        new Child("div")
-            .setClassList(["button__state"])
-            .appendTo(button);
-        new Child("span")
-            .setClassList(["button__label"])
-            .setInnerText(this.label)
-            .appendTo(button);
-        return document.querySelector(`#${button.id}`);
-    }
-    getNode(){
-        return document.querySelector(`#${this.id}`);
-    }
-    setAttribute(object = {}){
-        switch(typeof object) {
-            case "object":
-                if(Array.isArray(object)) console.log(`Warning: setAttribute() method on Button expects parameter type of object but was passed type of array instead. Attributes were not be applied to Button object:`, this);
-                else Object.assign(this.attributes, object);
-                break;
-            case "string":
-                Object.assign(this.attributes, { [object]: "" });
-                break;
-            default:
-                console.log(`Warning: setAttribute() method on Button expects parameter type of object but was passed type of ${ object } instead. Attributes were not be applied to Button object:`, this);
-                break;
-        }
-        return this;
-    }
-    setClassList(array = []){
-        if(Array.isArray(array)) for(const str of array) this.classList.push(str);
-        else this.classList.push(array.toString());
-        return this;
-    }
-    setId(str=""){
-        this.id = str;
-        return this;
-    }
-    setLabel(str=""){
-        this.label = str;
-        return this;
-    }
-}
 class Child {
     constructor(tag = "div"){
         this.tag = tag;
@@ -69,15 +8,22 @@ class Child {
     }
     appendTo(parent = document.body){
         let child = this.create();
-        if(parent === document.body) parent.append(child);
-        else document.querySelector(`#${parent.id}`).append(child);
+        if(parent instanceof Child) document.querySelector(`#${parent.id}`).append(child);
+        if(parent instanceof HTMLElement) parent.append(child);
+        if(typeof parent === "string") document.querySelector(`${string}`).append(child);
+        if(!parent instanceof Child && !parent instanceof HTMLElement && !typeof parent === "string"){
+            throw new Error(`Parameter instance of Child or HTMLElement is required at method appendTo() on Child.`)
+        }
         return this;
     }
     create(){
         let child = document.createElement(this.tag);
         child.id = this.id;
         for(const str of this.classList) child.classList.add(str);
-        for(const [key, val] of Object.entries(this.attributes)) child.setAttribute(key, val);
+        for(const [key, val] of Object.entries(this.attributes)) {
+            if(this.tag === "img" && key === "src" ) child.src = chrome.runtime.getURL(val);
+            else child.setAttribute(key, val);
+        }
         if(typeof this.innerText === "string"){
             let text = document.createTextNode(this.innerText);
             child.appendChild(text);
@@ -147,12 +93,40 @@ class Child {
         return this;
     }
 }
+class Button extends Child {
+    constructor(label = ""){
+        super();
+        this.id = utilities.getRandomId();
+        this.classList = ["button"];
+        this.attributes = {};
+        this.label = label;
+    }
+    create(){
+        // create the button
+        let button = new Child("button")
+            .setId(this.id)
+            .setClassList(this.classList)
+            .appendTo(document.body);
+        // add children button
+        new Child("div")
+            .setClassList(["button__state"])
+            .appendTo(button);
+        new Child("span")
+            .setClassList(["button__label"])
+            .setInnerText(this.label)
+            .appendTo(button);
+        return document.querySelector(`#${button.id}`);
+    }
+    setLabel(str=""){
+        this.label = str;
+        return this;
+    }
+}
 class Client {
     constructor(){
         this.oauth = localStorage.getItem("prod:SugarCRM:AuthAccessToken")
             //? quotations marks must be removed
             .toString().split(`"`)[1];
-        this.userData = localStorage.getItem("userdata")
     }
     getCurrentClinic(){
         if(this.getCurrentResource() === "tjc_backoffice"){
@@ -162,15 +136,26 @@ class Client {
         }
     }
     getCurrentResource(){
+        // get teh current resource
         let resource = window.location.href.split("/")[3];
         // remove leading pound (#) for front office resources 
         if(resource.split("#").length === 1) return resource;
         else return resource.split("#")[1].toString().toLowerCase();
     }
+    getCurrentUser(formatted = false){
+        let username = JSON.parse(localStorage.getItem("userdata")).username;
+        if(username === undefined){
+            if(this.getCurrentResource() === "tjc_backoffice") username = document.querySelector(".username").innerText;
+            else username = document.querySelector("#userlist button").title;
+        }
+        if(formatted) username = utilities.string.capitalize(username, ".");
+        return username;
+    }
 }
 
-class Textfield {
+class Textfield extends Child {
     constructor(label = "", isParagraph = false){
+        super();
         this.id = utilities.getRandomId();
         this.name = label;
         this.isParagraph = isParagraph;
@@ -178,12 +163,6 @@ class Textfield {
         this.attributes = {type: "text", name: label};
         this.label = label;
         this.hint = false;
-    }
-    appendTo(parent = document.body){
-        let textfield = this.create();
-        if(parent === document.body) parent.appendChild(textfield);
-        else document.querySelector(`#${parent.id}`).appendChild(textfield);
-        return this;
     }
     create(){
         // create the textfield
@@ -209,33 +188,9 @@ class Textfield {
             .appendTo(textfieldContainer);
         return document.querySelector(`#${textfieldContainer.id}`);
     }
-    setAttribute(object = {}){
-        switch(typeof object) {
-            case "object":
-                if(Array.isArray(object)) console.log(`Warning: setAttribute() method on Textfield expects parameter type of object but was passed type of array instead. Attributes were not be applied to Textfield object:`, this);
-                else Object.assign(this.attributes, object);
-                break;
-            case "string":
-                Object.assign(this.attributes, { [object]: "" });
-                break;
-            default:
-                console.log(`Warning: setAttribute() method on Textfield expects parameter type of object but was passed type of ${ object } instead. Attributes were not be applied to Textfield object:`, this);
-                break;
-        }
-        return this;
-    }
-    setClassList(array = []){
-        if(Array.isArray(array)) for(const str of array) this.classList.push(str);
-        else this.classList.push(array.toString());
-        return this;
-    }
     setHint(str=""){
         this.hint = str;
         return this;  
-    }
-    setId(str=""){
-        this.id = str;
-        return this;
     }
     setName(str=""){
         this.name = str;
@@ -297,7 +252,7 @@ class Patient {
         return document.querySelector("[data-fieldname=age_c] .ellipsis_inline").innerText;
     }
     getDOB(){
-        return document.querySelector("[data-name=birthdate] [data-original-title]").innerText;
+        return document.querySelector("[data-fieldname=birthdate] .ellipsis_inline").innerText;
     }
     getEmail(){
         return document.querySelector("[data-name=email] a").innerText;
@@ -308,7 +263,7 @@ class Patient {
     getName(){
         // get the patient's printed name form axis
         let nameArray = document.querySelector(`h1 .record-cell[data-type=fullname] .table-cell-wrapper 
-                .index span .record-cell[data-type=fullname] .ellipsis_inline`).innerText.split("");
+                .index span .record-cell[data-type=fullname] .ellipsis_inline`).innerText.split(" ");
     
         // remove any shenanigans
         nameArray.forEach((name, i) => {
@@ -331,10 +286,10 @@ class Patient {
     
         // return name as object
         return {
-            fullName: nameArray[0] + nameArray[1],
-            firstName: nameArray[0], 
-            lastName: nameArray[1],
-            initials: nameArray[0].charAt(0) + nameArray[1].charAt(0)
+            fullName: `${nameArray[0]} ${nameArray[1]}`,
+            firstName: `${nameArray[0]}`, 
+            lastName: `${nameArray[1]}`,
+            initials: `${nameArray[0].charAt(0) + nameArray[1].charAt(0)}`
         };
     }
     getPhone(){
@@ -556,6 +511,137 @@ const axis = {
             return error;
         }
     },
+    getStatementBody: async (startDate = dateTime.presentYearStart, endDate = dateTime.today) => {
+
+        // access the current client and patient objects
+        let client = new Client(), patient = new Patient();
+    
+        // get all transactions and visits between startDate and endDate
+        let transactions, visits;
+        try{
+            if(startDate instanceof Date && endDate instanceof Date){
+                transactions = await axis.getTransactions(startDate, endDate);
+                visits = await axis.getVisits(startDate, endDate);
+            }  else { throw new Error(`Parameter Instanceof Date is required at getStatementBody().`); }
+        } catch (error) { console.log(error); return error; }
+    
+        // the statement body includes three lists: meta info, patient info, and an account summary
+
+        // some of these list item values need to be calculated
+        let paid = 0, billed = 0, refunded = 0;
+        for(const transaction of transactions){
+            if(transaction.type === "Refund/Void") paid -= parseFloat(transaction.amount);
+            else paid += parseFloat(transaction.amount);
+        }
+        for(const transaction of transactions){
+            if(transaction.type != "Refund/Void") billed += parseFloat(transaction.amount);
+            else billed += parseFloat(transaction.amount);
+        }
+        for(const transaction of transactions){
+            if(transaction.type === "Refund/Void") refunded +=  parseFloat(transaction.amount);
+        }
+
+        // put these lists into an array for convenience
+        let lists = [
+            {   
+                content: [
+                    {label: "Issue Date", value: dateTime.getNumberString(dateTime.today)},
+                    {label: "Period", value: `${dateTime.getNumberString(startDate)} - ${dateTime.getNumberString(endDate)}`},
+                    {label: "Reference Number", value: `${patient.name.initials}${dateTime.getNumberString(patient.dob,"mmddyyyy")}`},
+                    {label: "Prepared By", value: `${client.getCurrentUser(true)}`}
+                ]
+            },
+            {   
+                title: "Patient Information",
+                content: [
+                    {label: "Name", value: `${patient.name.fullName}`},
+                    {label: "Date of Birth", value: `${dateTime.getNumberString(patient.dob)} (age ${patient.age})`},
+                    {label: "Address", value: `${patient.address.primary.street} ${patient.address.primary.city}, ${patient.address.primary.state} ${patient.address.primary.zip}`},
+                    {label: "Phone", value: `${patient.phone.mobile}`},
+                    {label: "Email", value: `${patient.email}`}
+                ]
+            },
+            {
+                title: "Account Summary",
+                content: [
+                    {label: "Total Paid", value: utilities.showPlaceValues(paid, 2)},
+                    {label: "Total Billed", value: utilities.showPlaceValues(billed, 2)},
+                    {label: "Total Refunded", value: utilities.showPlaceValues(refunded, 2)},
+                    {label: "Total Visits", value: `${visits.length}`}
+                ]
+            }
+        ];
+    
+        // the statement includes two separate tables: transaction history and visit history
+        let transactionTableContent = [], visitTableContent = [];
+        // the content of these tables needs to be populated before a table can be generated
+         for(const transaction of transactions){
+            transactionTableContent.push({
+                Date: dateTime.getNumberString(transaction.date_entered), 
+                Purchase: transaction.product_purchased, 
+                Method: transaction.cc_type === "Cash" ? "Cash" : `${transaction.cc_type} (${transaction.last_four})`, 
+                Payment: transaction.type === "Refund/Void" ? 0 : transaction.amount, 
+                Refund: transaction.type === "Refund/Void" ? transaction.amount : 0
+            });
+        }
+        for(const visit of visits){
+            visitTableContent.push({
+                Date: dateTime.getNumberString(visit.date_entered), 
+                Procedure: visit.procedure, 
+                Charge: utilities.showPlaceValues(visit.visitCost, 2), 
+                Physician: visit.users_tj_visits_2_name, 
+                Location: visit.tj_clinics_tj_visits_1_name
+            });
+        }
+    
+        // put these tables into an array for convenience
+        let tables = [
+            {
+                title: "Transaction History",
+                subtitle: "",
+                content: transactionTableContent
+            },
+            {
+                title: "Visit History",
+                subtitle: "",
+                content: visitTableContent
+            }
+        ];
+    
+        // build the lists and tables
+        // push their container objects to a body array
+        let body = [];
+    
+        // build each list and push each container object to body
+        for(const list of lists){
+            // create the container object
+            let container = new Child().setClassList(["list"]).appendTo();
+            // append the title if supplied
+            if(list.title === undefined) new Child("span").setClassList(["list_title"]).setInnerText(list.title).appendTo(container);
+            // append the subtitle if supplied
+            if(list.subtitle === undefined) new Child("span").setInnerText(list.subtitle).appendTo(container);
+            // append the list if supplied
+            if(Array.isArray(list.content)) container.getNode().append(build.list(list.content));
+            // push the container to the body
+            body.push(container);
+        }
+    
+        // build each list and push each container object to body
+        for(const table of tables){
+            // create the container object
+            let container = new Child().setClassList(["table"]).appendTo();
+            // append the title if supplied
+            if(table.title === undefined) new Child("span").setClassList(["list_title"]).setInnerText(table.title).appendTo(container);
+            // append the subtitle if supplied
+            if(table.subtitle === undefined) new Child("span").setInnerText(table.subtitle).appendTo(container);
+            // append the list if supplied
+            if(Array.isArray(table.content)) container.getNode().append(build.table(table.content));
+            // push the container to the body
+            body.push(container);
+        }
+    
+        return body;
+    },
     getTransactions: async (startDate = dateTime.presentYearStart, endDate = dateTime.today) => {
         try{
             // check that the input values are *probably* valid
@@ -620,10 +706,6 @@ const axis = {
                     for(const visit of visits.records) {
                         // format the visit date for evaluation
                         let visitDate = new Date(visit.date_entered);
-                            visitDate = new Date(
-                                visitDate.getFullYear(), 
-                                visitDate.getMonth(), 
-                                visitDate.getDate());
                         // store the matching visits of the matchingVisits array
                         if(visitDate >= startDate && visitDate <= endDate) matchingVisits.push(visit.id);
                     }
@@ -649,21 +731,11 @@ const axis = {
     
             // for each record, merge the visit details
             records.forEach((record, i) => {
-                console.log("Test:", record.id, detailedVisits);
-                // hopefully they're of the same order
-                if(record.id === detailedVisits[i].id){
-                    // merge
-                    Object.assign(record, detailedVisits[i]);
-                    console.log("Matched:", record);
-                } else {
-                    // if they're not of the same order, check each visit id for a match
-                    for(const detailedVisit of detailedVisits){
-                        // and merge them if they match
-                        if(record.id === detailedVisit.id) {
-                            Object.assign(record, detailedVisit);
-                            console.log("Out-of-order Match:", record);
-                        } 
-                        // ? what if they don't match
+                // compare each record to each detailedVisit
+                for(const detailedVisit of detailedVisits){
+                    // merge them if they match
+                    if(record.id === detailedVisit.id) {
+                        Object.assign(record, detailedVisit);
                     }
                 }
             });
@@ -681,7 +753,7 @@ const axis = {
 }
 
 const build = {
-    dialog: () => {
+    dialog: async () => {
         // create the dialog container
         let dialog = new Child("dialog")
             .setId("extension-dialog")
@@ -725,15 +797,42 @@ const build = {
                         e.preventDefault();
                         // remove the dialog
                         animation.fade(dialog.getNode(), false);
+
                         // build a sheet for the superbill
-                        let sheet = build.sheet();
-                        // TODO: show status
-                        // TODO: append superbill
-                        // append the superbill to the sheet
-                        // sheet.getNode().append(generateSuperbill(
-                        //     startDateTextfield.getNode().value, 
-                        //     endDateTextfield.getNode().value
-                        // ));
+                        let sheet = build.sheet().getNode();
+                        // create a preview to container for the superbill
+                        let preview = new Child("div").setId("extension-preview").appendTo(sheet);
+                        // create a page to contain the superbill body
+                        let page = await build.page("Superbill");
+                        // and append the page to the preview
+                        preview.getNode().append(page.node);
+
+                        // apply the superbill class to the page body
+                        let superbill = new Child().setClassList(["superbill"]).appendTo(page.body);
+                        // get the superbill body content
+                        let bodyContent = await axis.getStatementBody();
+                        // populate the page body with the body content
+                        for(const obj of bodyContent) superbill.getNode().append(obj.getNode());
+
+                        // add pages if the body content it too tall
+                        const body = utilities.getDimensions(page.body),
+                            header = utilities.getDimensions(page.header);
+                        if(body.content.height > body.height){
+                            for(let i = 0; i < Math.ceil(body.content.height / body.height) - 1; ++i){
+                                // duplicate the page with the full body content
+                                let clone = utilities.duplicateNode(page.node);
+                                // subsequent pages shouldn't have a header
+                                clone.querySelector(".page__header").remove();
+                                // append the duplicate to the preview
+                                preview.getNode().append(clone);
+                                // shift the body content to show overflow from the previous page
+                                let cloneBody = clone.querySelector(".page__body");
+                                // for the scrollTo() method to achieve it's desired effect
+                                // create a tall element at the bottom of the page
+                                new Child().setAttribute({style: `height: ${body.height}px`}).appendTo(cloneBody);
+                                cloneBody.scrollTo(0,((header.height * i) + (body.height * (i + 1))));
+                            }
+                        }
                     });
                 break;
             default:
@@ -743,6 +842,78 @@ const build = {
         }
         // show dialog (animation.fade of)
         animation.fade(dialog.getNode(), true);
+    },
+    list: (content = [], editable = { label: false,  value: false}) => {
+        // this method accepts an array of objects and outputs an unordered list
+        let ul = new Child("ul").appendTo().getNode();
+        // only some content keys are valid
+        const validKeys = ["label", "value"];
+        
+        // allow editable content fields
+        let element = {};
+        for(const key of validKeys) { 
+            // if an element is editable, it needs to be an <input>
+            if(editable[key] === true) element[key] = "input";
+            // otherwise, it should be a "span"
+            else element[key] = "span";
+        }
+
+        // for each content object
+        for(const obj of content){
+            // create a list item
+            let li = new Child("li").appendTo(ul).getNode();
+            // create an element containing each key value
+            for(const key of validKeys) { 
+                if(Object.hasOwn(obj, key)) {
+                    new Child(element[key])
+                        .setClassList(["typescale--body"])
+                        .setInnerText(obj[key])
+                        // and append it to the containing list item
+                        .appendTo(li);
+                }
+            }
+        }
+        return ul;
+    },
+    page: async (title = "Untitled") => {
+        // create a page
+        let page = new Child().setClassList(["page"]).appendTo().getNode();
+    
+        // create a header for the page
+        let header = new Child().setClassList(["page__header"])
+            .appendTo(page).getNode();
+
+        // create a body for the page
+        let body = new Child('div').setClassList(["page__body"])
+            .appendTo(page).getNode();
+
+        // create a footer for the page
+        let footer = new Child().setClassList(["page__footer"])
+            .appendTo(page).getNode();
+    
+        // get clinic details to populate the header and footer
+        let clinicDetails = await axis.getClinicDetails(new Client().getCurrentClinic());
+    
+        // populate the header with a logo, title, and topline
+        new Child("img").setAttribute({src: "assets/joint-logo--small.png"})
+            .setClassList(["logo"])
+            .appendTo(header);
+        new Child("h1").setInnerText(title)
+            .setClassList(["title"])
+            .appendTo(header);
+        new Child("span").setClassList(["topline"])
+            .setInnerText(`This clinic is owned and operated by ${clinicDetails.pc} and managed by ${clinicDetails.bussiness_entity}.`)
+            .appendTo(header);
+    
+        // populate the footer with this clinic's name, address, phone, and email
+        new Child("span")
+            .setInnerText(`The Joint Chiropractic - ${clinicDetails.name} | ${clinicDetails.billing_address_street} ${clinicDetails.billing_address_city}, ${clinicDetails.billing_address_state} ${clinicDetails.billing_address_postalcode}`)
+            .appendTo(footer);
+        new Child("span")
+            .setInnerText(`${clinicDetails.phone1} | ${clinicDetails.email}`)
+            .appendTo(footer);
+
+        return { node: page, header: header, body: body, footer: footer };
     },
     sheet: () => {
         let sheet = new Child("div")
@@ -767,72 +938,189 @@ const build = {
         animation.slide(sheet.getNode(), "right", true);
         return sheet;
     },
-    page: async (title = "Untitled", content = HTMLCollection) => {
+    table: (content = [], filter = [], wrapContent = false, editable = false) => {
+        // this function accepts an array of objects and outputs a semantic html table
+        let table = new Child("table").appendTo().getNode();
 
-        // create a doc inside of the preview container
-        let previewDocument = new Child().setClassList(["page-preview"])
-            .appendTo(preview.getNode());
-    
-        // create a header for the previewed document
-        let previewHeader = new Child().setClassList(["page__header"])
-            .appendTo(previewDocument.getNode());
-        // create a footer for the previewed document
-        let previewFooter = new Child().setClassList(["page__footer"])
-            .setInnerText()
-            .appendTo(previewDocument.getNode());
-    
-        // get clinic details to populate the header and footer
-        let clinicDetails = await axis.getClinicDetails(new Client().getCurrentClinic());
-    
-        // grab the nodes for both the header and footer
-        let headerNode = previewHeader.getNode(),
-            footerNode = previewFooter.getNode()
-    
-        // populate the header with a logo, title, and topline
-        new Child("img").setAttribute({src: "assets/joint_logo.png"})
-            .setClassList(["logo"])
-            .appendTo(headerNode);
-        new Child("h1").setInnerText(title)
-            .setClassList(["title"])
-            .appendTo(headerNode);
-        new Child("span").setClassList(["topline"])
-            .setInnerText(`This clinic is owned and operated by ${clinicDetails.pc} and managed by ${clinicDetails.business_entity}.`)
-            .appendTo(headerNode);
-    
-        // populate the footer with this clinic's name, address, phone, and email
-        new Child("span")
-            .setClassList(["company"])
-            .setInnerText(`The Joint Chiropractic - ${clinicDetails.name}`)
-            .appendTo(footerNode);
-        new Child("span")
-            .setClassList(["clinic"])
-            .setInnerText(`${clinicDetails.billing_address_street} ${clinicDetails.billing_address_city}, ${clinicDetails.billing_address_state} ${clinicDetails.billing_address_postalcode}`)
-            .appendTo(footerNode);
-        new Child("span")
-            .setClassList(["contact"])
-            .setInnerText(`${clinicDetails.phone1} | ${clinicDetails.email}`)
-            .appendTo(footerNode);
-    
-        // create a body div within the page and return it as a node
-        return {
-            title: title,
-            body: new Child('div').setClassList(["page__body"]).appendTo(previewDocument.getNode()).getNode()
-        };
+        // if there is no content, just return the table
+        if(!content.length) return table;
+
+        // a filter can be specified to only output specified key values
+        // if the filter is an empty array or falsy, this filter should default to all keys on the first object
+        if(!filter.length || filter){
+            for(const [key, val] of Object.entries(content[0])) filter.push(key);
+        }
+        // create a table header
+        let th = new Child("th").appendTo(table);
+        // populate the header with each key of filter
+        for(const key of filter) new Child("td").setInnerText(key).appendTo(th);
+
+        // for each object of content
+        for(const obj of content){
+            //create a row
+            let row = new Child("tr").appendTo(table);
+            // for each key of filter
+            for(const key of filter){
+                // populate the cell with the key value
+                let value = obj[key];
+                // values need to be strings
+                if(typeof value != "string") value = value.toString();
+                // longer strings should get wider cells
+                let classList = ["typescale--body"];
+                if(!wrapContent) classList.push("no-wrap");
+                if(value.length > 24) classList.push("column--wide");
+                // create a cell
+                let cell = new Child("td").setClassList(classList).appendTo(row);
+                // make the cell editable if it should be
+                if(editable) new Child("input").setAttribute({value: value}).appendTo(cell);
+                else cell.getNode().innerText = value;
+                // ! this will create some cells in a column that are wider than others
+            }
+        }
+
+        // adjust cell widths
+        // create an array representing the index of every wide column
+        let wideColumns = [];
+        // for each row in the table
+        table.querySelectorAll("tr").forEach(row => {
+            // check if a cell
+            row.querySelectorAll("td").forEach((cell, i) => {
+                // check if the cell is part of a wide column and store the index of that column
+                // only store indices that haven't been stored already
+                if(cell.classList.contains("column--wide") && !wideColumns.includes(i)) wideColumns.push(i);
+            });
+        });
+        // style headers for wide columns
+        table.querySelectorAll("th td").forEach((header, i) => {
+            if(wideColumns.includes(i)) header.classList.add("column--wide");
+        })
+        // style cells for wide columns
+        table.querySelectorAll("tr").forEach(row => {
+            row.querySelectorAll("td").forEach((cell, i) => {
+                if(wideColumns.includes(i)) cell.classList.add("column--wide");
+            });
+        });
+
+        return table;
     }
 }
 
 const dateTime = {
     today: new Date(),
-    presentYearStart: new Date(new Date().getFullYear, 0, 1)
+    presentYearStart: new Date(new Date().getFullYear(), 0, 1),
+    getNumberString: (date = new Date(), model = "") => {
+        // dates come in many forms, but only some are valid
+        const validModels = [
+            'mm-dd-yyyy', 'dd-mm-yyyy', 'mm-dd-yy', 'dd-mm-yy',
+            'mm/dd/yyyy', 'dd/mm/yyyy', 'mm/dd/yy', 'dd/mm/yy',
+            'mmddyyyy', 'ddmmyyyy', 'mmddyy', 'ddmmyy'
+        ];
+        // if the supplied date model is invalid, reset it
+        if(!validModels.includes(model)) model = "mm/dd/yyyy";
+
+        // check that the date parameter is also valid
+        // try coercing invalid parameters to dates first
+        if(!date instanceof Date) date = new Date(date);
+        // if the parameter can't be coerced, throw an error
+        if(date == "Invalid Date") throw new Error(`Method getNumberString() at dateTime requires a valid date parameter.`)
+
+        // format the supplied date
+        let year = new Date(date).getFullYear(),
+            month = new Date(date).getMonth() + 1;
+            date = new Date(date).getDate();
+            // convert each to strings
+            year = year.toString();
+            month = month.toString();
+            date = date.toString();
+            // add leading zeros if applicable
+            month = String(month).length === 1 ? "0" + month : month;
+            date = String(date).length === 1 ? "0" + date : date;
+
+        // test the model to determine the desired delimiter
+        let delimiter = "";
+        if(model.split("-").length > 1) delimiter = "-";
+        if(model.split("/").length > 1) delimiter = "/";
+
+        // shorten year if applicable
+        if(model.length < 9) year = year.substring(2);
+
+        // for testing character position, remove delimiters
+        let strArray = model.split(delimiter), modelString = "";
+        for(const str of strArray) modelString += str;
+        // rearrange the string if the date or year leads
+        let numberString = `${month}${delimiter}${date}${delimiter}${year}`;
+        if(modelString.charAt(0) === "d") numberString = `${date}${delimiter}${month}${delimiter}${year}`;
+        if(modelString.charAt(0) === "y" && modelString.charAt(year.length) === "m") 
+            numberString = `${year}${delimiter}${month}${delimiter}${date}`;
+        if(modelString.charAt(0) === "y" && modelString.charAt(year.length) === "d") 
+            numberString = `${year}${delimiter}${date}${delimiter}${month}`;
+
+        return numberString;
+    }
 }
 
 const utilities = {
+    duplicateNode(node = HTMLElement){
+        let clone = node.cloneNode(true);
+        clone.id = utilities.getRandomId();
+        clone.querySelectorAll("*").forEach(child => {
+            child.id = utilities.getRandomId();
+        });
+        return clone;
+    },
+    getDimensions: (node = document.body) => {
+        // get height and width
+        let height = window.getComputedStyle(node).getPropertyValue("height"),
+            width = window.getComputedStyle(node).getPropertyValue("width");
+            // convert height and width to number values
+            height = parseFloat(height.split("p")[0]);
+            width = parseFloat(width.split("p")[0]);
+        // 
+        let dimensions = {
+            content: {
+                height: Math.ceil(node.scrollHeight),
+                width: Math.ceil(node.scrollWidth)
+            },
+            height: Math.ceil(height),
+            width: Math.ceil(width)
+        };
+        console.log(dimensions);
+        return dimensions;
+    },
     getRandomId: () => {
         let letters = ["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z"];
         let leadingLetters = "";
         for(var i = 0; i < 4; ++i) leadingLetters += letters[Math.floor(Math.random() * 26)];
         let cryptoString = window.crypto.getRandomValues(new Uint32Array(1))[0].toString(16);
         return leadingLetters + cryptoString;
+    },
+    showPlaceValues: (number = 0, quantity = 2) => {
+        // the number parameter can be typeof string or number
+        // coerce it to a string, regardless of type, and split at the decimal
+        let str = number.toString().split('.');
+        // if the string doesn't have a decimal, add trailing zeros
+        if(str.length === 1) return `${str[0]}.00`;
+        // if it does has a decimal
+        if(str.length > 1) {
+         // make sure there are at least place values to match quantity
+            if(str[1].length < quantity){
+                let trailingZeros = "";
+                for(let i = 0; i < quantity; ++i) trailingZeros += "0";
+                str[1] += trailingZeros;
+            }
+            // trim the place values to match quantity
+            return `${str[0]}.${str[1].substring(0, quantity)}`;
+        }
+    },
+    string: {
+        capitalize: (string, delimiter = " ") => {
+            let capitalized = "";
+            string.split(delimiter).forEach((str, i) => {
+                if(i += 1 < string.length) capitalized += `${str.charAt(0).toUpperCase() + str.slice(1)} `;
+                else `${str.charAt(0).toUpperCase() + str.slice(1)}`;
+            })
+            return capitalized;
+        }
     }
 }
 
@@ -851,180 +1139,3 @@ chrome.runtime.onMessage.addListener(function(message, sender, response){
             break;
     }
 });
-
-// ! under construction
-async function getStatementBody(startDate = dateTime.presentYearStart, endDate = dateTime.today){
-
-    // get all transactions and visits between startDate and endDate
-    let transactions, visits;
-    try{
-        if(startDate instanceof Date && endDate instanceof Date){
-            transactions = await axis.getTransactions(startDate, endDate);
-            visits = await axis.getVisits(startDate, endDate);
-        }  else { throw new Error(`Parameter Instanceof Date is required at generateSuperbill().`); }
-    } catch (error) { console.log(error); return error; }
-
-    // TODO: remove this output log
-    console.log(clinic, transactions, visits);
-
-    // access the current client and patient objects
-    let client = new Client(), patient = new Patient();
-
-    // create a new preview
-    let preview = await new Preview("Superbill")
-        .appendTo(document.querySelector("#extension-sheet"));
-
-    // build an object to access meta information, patient information, and account summary
-    let lists = [
-        {   
-            content: [
-                {label: "Issue Date", value: dateTime.today},
-                {label: "Period Start", value: startDate},
-                {label: "Period End", value: endDate},
-                {label: "Reference Number", value: `${ patient.name.initials + patient.dob.split("/")[0] + patient.dob.split("/")[1] + patient.dob.split("/")[2] }`},
-                {label: "Prepared By", value: client.userData.username}
-            ]
-        },
-        {   
-            title: "Patient Information",
-            content: [
-                {label: "Name", value: patient.name.fullName},
-                {label: "Date of Birth", value: `${patient.dob} (age ${patient.age})`},
-                {label: "Address", value: `${patient.address.primary.street} ${patient.address.primary.city}, ${patient.address.primary.state} ${patient.address.primary.zip}`},
-                {label: "Phone", value: patient.phone.mobile },
-                {label: "Email", value: patient.email}
-            ]
-        },
-        {
-            title: "Account Summary",
-            // TODO: check that each of these summary items match what the table says
-            // ! this will be important because the table is editable (in case something is incorrect)
-            // ? should the table be editable
-            content: [
-                {label: "Total Paid", value: () => {
-                    let paid = 0;
-                    for(const transaction of transactions)
-                        if(transaction.type === "Refund/Void") paid -= parseFloat(transaction.amount);
-                        else paid += parseFloat(transaction.amount);
-                    return paid;
-                }},
-                {label: "Total Billed", value: () => {
-                    let billed = 0;
-                    for(const transaction of transactions)
-                        if(transaction.type === "Refund/Void") billed += 0;
-                        else billed += parseFloat(transaction.amount);
-                    return billed;
-                }},
-                {label: "Total Refunded", value: () => {
-                    let refunded = 0;
-                    for(const transaction of transactions)
-                        if(transaction.type === "Refund/Void") refunded +=  parseFloat(transaction.amount);
-                    return refunded;
-                }},
-                {label: "Total Visits", value: visits.length}
-            ]
-        }
-    ];
-   
-    // for each list of lists
-    for(const list of lists){
-        // the addSection() method on Preview accepts children listed in an array
-        let children = [];
-        // create an element containing the title of this list, if present
-        let title;
-        if(typeof list.title === "string") title = new Child().setInnerText(list.title);
-        // iterate over the content of this list
-        list.content.forEach(item => {
-            // add a li for each list content item
-            let li = new Child("li");
-            // create 
-            let label = new Child("span").setInnerText(item.label);
-            let value = new Child("span").setInnerText(typeof item.value === "function" ? item.value() : item.value);
-            children.push()
-        });
-        let section = preview.addSection(children, [])
-
-        let li = new Child("li").appendTo(list.node);
-        new Child("span").setClassList(["item__label"])
-            .setInnerText(list.content.label).appendTo(li);
-        new Child("span").setClassList(["item__value"])
-            .setInnerText(list.content.value).appendTo(li);
-    }
-
-    // create a table to hold all transactions
-    let transactionsTable = new Child("table").appendTo(template.transactionHistory.getNode());
-    // populate the superbill transaction history table
-    for(const transaction of transactions){
-        // create a new table row
-        let row = new Child("tr").appendTo(transactionsTable.getNode()).getNode();
-        // format the transaction date
-        let transactionDate = new Date(transaction.date_entered);
-        let year = transactionDate.getFullYear(),
-            month = transactionDate.getMonth() + 1,
-            date = transactionDate.getDate();
-            // convert each to strings
-            year = year.toString();
-            month = month.toString();
-            date = date.toString();
-            // add leading zeros if applicable
-            month = String(month).length === 1 ? "0" + month : month;
-            date = String(date).length === 1 ? "0" + date : date;
-            transactionDate = `${month}/${date}/${year}`;
-        // format the payment method
-        const paymentMethod = transaction.cc_type === "Cash" ? "Cash" : `${transaction.cc_type} (${transaction.last_four})`;
-        // delineate paid amount and refund amount
-        const amount = {
-            paid: transaction.type === "Refund/Void" ? 0 : transaction.amount,
-            refunded: transaction.type === "Refund/Void" ? transaction.amount : 0
-        }
-        // create a variable to store all row cell values 
-        // transaction date, purchase item, payment method, transaction status, paid amount, refund amount
-        let cellValues = [transactionDate, transaction.product_purchased, paymentMethod, amount.paid, amount.refunded];
-        // populate the table row with cell values
-        for(const value of cellValues){
-            // create the semantic td element
-            let cell = new Child("td").appendTo(row);
-            // put an editable input element inside
-            new Child("input").setAttribute({type: "text"}).appendTo(cell)
-                // and set the value
-                .getNode().value = value;
-        }
-    }
-
-    // create a table to hold all visit history
-    let visitsTable = new Child("table").appendTo(template.visitHistory.getNode());
-    // populate the superbill visit history table
-    for(const visit of visits){
-        // create a new table row
-        let row = new Child("tr").appendTo(visitsTable.getNode()).getNode();
-        // format the visit date
-        let visitDate = new Date(visit.date_entered);
-        let year = visitDate.getFullYear(),
-            month = visitDate.getMonth() + 1,
-            date = visitDate.getDate();
-            // convert each to strings
-            year = year.toString();
-            month = month.toString();
-            date = date.toString();
-            // add leading zeros if applicable
-            month = String(month).length === 1 ? "0" + month : month;
-            date = String(date).length === 1 ? "0" + date : date;
-            visitDate = `${month}/${date}/${year}`;
-
-        // create a variable to store all row cell values 
-        // date, procedure, cost, physician, clinic
-        let cellValues = [visitDate, visit.procedure, visit.visitCost, visit.users_tj_visits_2_name, visit.tj_clinics_tj_visits_1_name];
-        // populate the table row with cell values
-        for(const value of cellValues){
-            // create the semantic td element
-            let cell = new Child("td").appendTo(row);
-            // put an editable input element inside
-            new Child("input").setAttribute({type: "text"}).appendTo(cell)
-                // and set the value
-                .getNode().value = value;
-        }
-    }
-
-    // populate the superbill signature line
-    // populate the superbill footer line
-}
