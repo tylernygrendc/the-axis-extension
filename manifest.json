@@ -4,7 +4,7 @@
     "description": "The AXIS Extension",
     "version": "0.10",
     "action": {
-        "default_icon": "assets/app-icon--small.png",
+        "default_icon": "assets/app-icon/small.png",
         "default_title": "Praktiki"
     },
     "content_scripts": [
@@ -22,7 +22,11 @@
     },
     "web_accessible_resources": [
     {
-      "resources": [ "assets/joint-logo--small.png" ],
+      "resources": [ 
+        "assets/joint-logo/small.png",
+        "fonts/MaterialSymbols.woff2",
+        "fonts/RobotoFlex.ttf"
+        ],
       "matches": [ "https://axis.thejoint.com/*" ]
     }
   ]

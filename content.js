@@ -7,7 +7,7 @@ class Child {
         this.innerText = "";
     }
     appendTo(parent = document.body){
-        let child = this.create();
+        let child = this.#create();
         if(parent instanceof Child) document.querySelector(`#${parent.id}`).append(child);
         if(parent instanceof HTMLElement) parent.append(child);
         if(typeof parent === "string") document.querySelector(`${string}`).append(child);
@@ -16,7 +16,7 @@ class Child {
         }
         return this;
     }
-    create(){
+    #create(){
         let child = document.createElement(this.tag);
         child.id = this.id;
         for(const str of this.classList) child.classList.add(str);
@@ -88,7 +88,7 @@ class Child {
     }
     update(){
         let outdated = document.querySelector(`#${this.id}`);
-        let updated = this.create();
+        let updated = this.#create();
         outdated.replaceWith(updated);
         return this;
     }
@@ -101,12 +101,12 @@ class Button extends Child {
         this.attributes = {};
         this.label = label;
     }
-    create(){
+    build(parent = document.body){
         // create the button
         let button = new Child("button")
             .setId(this.id)
             .setClassList(this.classList)
-            .appendTo(document.body);
+            .appendTo(parent);
         // add children button
         new Child("div")
             .setClassList(["button__state"])
@@ -115,7 +115,7 @@ class Button extends Child {
             .setClassList(["button__label"])
             .setInnerText(this.label)
             .appendTo(button);
-        return document.querySelector(`#${button.id}`);
+        return button;
     }
     setLabel(str=""){
         this.label = str;
@@ -164,29 +164,29 @@ class Textfield extends Child {
         this.label = label;
         this.hint = false;
     }
-    create(){
-        // create the textfield
-        let textfieldContainer = new Child("div")
+    build(parent = document.body){
+        // build the textfield
+        let container = new Child("div")
             .setId(this.id)
             .setClassList(this.classList)
-            .appendTo(document.body);
+            .appendTo(parent);
         // add label and input to textfield
         new Child("label")
             .setAttribute({for: this.id})
             .setClassList(["text-field__label"])
             .setInnerText(this.label)
-            .appendTo(textfieldContainer);
+            .appendTo(container);
         // input can also be a textarea for paragraph responses
         let input = this.isParagraph ? new Child("textarea"): new Child("input");
             input.setAttribute(this.attributes)
                 .setClassList(["text-field__input"])
-                .appendTo(textfieldContainer);
+                .appendTo(container);
         // add a hint element if there is a hint
         if(this.hint) new Child("span")
             .setClassList(["text-field__hint"])
             .setInnerText(this.hint)
-            .appendTo(textfieldContainer);
-        return document.querySelector(`#${textfieldContainer.id}`);
+            .appendTo(container);
+        return container;
     }
     setHint(str=""){
         this.hint = str;
@@ -301,7 +301,66 @@ class Patient {
         }
     }
 }
-
+class Progressbar extends Child {
+    constructor(value = 0){
+        super();
+        this.attributes = {
+            role: "progressbar",
+            "data-value": `${value}`
+        };
+        this.classList = ["progress"];
+        this.id = utilities.getRandomId();
+        this.value = value;
+    }
+    build(parent = document.body){
+        if(!this.value) this.classList.push("indeterminate");
+        let container = new Child()
+            .setId(this.id)
+            .setAttribute(this.attributes)
+            .setClassList(this.classList)
+            .appendTo(parent);
+        new Child().setClassList(["progress__indicator"]).appendTo(container);
+        new Child().setClassList(["progress__stop"]).appendTo(container);
+        return this;
+    }
+    async complete(){
+        let progressbar = await this.setProgress(100);
+        progressbar.getNode().remove();
+        return true;
+    }
+    #getIndicator(){
+        return this.getNode().querySelector(".progress__indicator");
+    }
+    #getProgress(){
+        return this.getNode().dataset.value;
+    }
+    async #setIndicator(width){
+        let animation = this.#getIndicator().animate([
+            { right: `${this.#getProgress()}%`},
+            { right: `${width}%`}
+        ], {duration: 1500 / (width * 100), iterations: 1, easing: "linear", fill: "forwards"});
+        await animation.finished;
+        animation.commitStyles();
+        animation.cancel();
+        this.value = width;
+    }
+    async setProgress(percent = 0){
+        const dimensions = utilities.getDimensions(this.getNode());
+        if(this.getNode().classList.contains("indeterminate")){
+            this.#getIndicator().style.cssText = "animation-iteration-count: 1;"
+            let animationComplete = await new Promise((resolve) => {
+                setTimeout(resolve(true), 1500);
+            });
+            if(animationComplete){
+                this.getNode().classList.remove("indeterminate");
+                await this.#setIndicator(dimensions.width * (percent / 100));
+            }
+        } else {
+            await this.#setIndicator(dimensions.width * (percent / 100));
+        }
+        return this;
+    }
+}
 const animation = {
     fade: async (node = Element, fadeIn = false) => {
         let animation;
@@ -390,8 +449,8 @@ const axis = {
             // process request response and set value of clinicId
             if(firstResponse.ok) {
                 let clinic = await firstResponse.json();
-                if(clinic.records.length === 1) clinicId = clinic.records[0].id;
-                else throw new Error(`Expected 1 results, but received ${clinic.records.length} results.`);
+                clinicId = clinic.records[0].id;
+                if(clinic.records.length > 1) console.log(`Expected 1 results. Received ${clinic.records.length} results at method getClinicDetails().`);
             } else { throw `status: ${firstResponse.status}`; }
     
             // second request to get detailed information for clinic
@@ -757,7 +816,7 @@ const build = {
         // create the dialog container
         let dialog = new Child("dialog")
             .setId("extension-dialog")
-            .setClassList(["axis-extension-surface"])
+            .setClassList(["extension-variables", "extension-surface"])
             .appendTo(document.body);
         // create a clear label for the dialog
         // the user should know they are interfacing with an extension
@@ -768,7 +827,7 @@ const build = {
         // create a button to close the dialog
         new Button()
             .setClassList(["close-modal"])
-            .appendTo(dialog)
+            .build(dialog)
             .getNode().addEventListener("click", async function (e) {
                 e.preventDefault();
                 animation.fade(dialog.getNode(), false);
@@ -785,54 +844,34 @@ const build = {
                     .appendTo(superbillTool).getNode();
                 // add start date text field to date range selector
                 let startDateTextfield = new Textfield("Start Date")
-                    .setType("date").appendTo(superbillDateRange);
+                    .setType("date").build(superbillDateRange);
                 // add end date text field to date range selector
                 let endDateTextfield = new Textfield("End Date")
-                    .setType("date").appendTo(superbillDateRange);
+                    .setType("date").build(superbillDateRange);
                 // add a button to trigger superbill generation
                 new Button("Print Superbill")
                     .setClassList(["surface-button", "width--full"])
-                    .appendTo(dialog)
+                    .build(dialog)
                     .getNode().addEventListener("click", async function (e){
                         e.preventDefault();
                         // remove the dialog
                         animation.fade(dialog.getNode(), false);
-
                         // build a sheet for the superbill
                         let sheet = build.sheet().getNode();
-                        // create a preview to container for the superbill
-                        let preview = new Child("div").setId("extension-preview").appendTo(sheet);
-                        // create a page to contain the superbill body
-                        let page = await build.page("Superbill");
-                        // and append the page to the preview
-                        preview.getNode().append(page.node);
-
-                        // apply the superbill class to the page body
-                        let superbill = new Child().setClassList(["superbill"]).appendTo(page.body);
+                        // show progress indicator
+                        let progressbar = new Progressbar().build(sheet), updatedProgress;
                         // get the superbill body content
                         let bodyContent = await axis.getStatementBody();
-                        // populate the page body with the body content
-                        for(const obj of bodyContent) superbill.getNode().append(obj.getNode());
-
-                        // add pages if the body content it too tall
-                        const body = utilities.getDimensions(page.body),
-                            header = utilities.getDimensions(page.header);
-                        if(body.content.height > body.height){
-                            for(let i = 0; i < Math.ceil(body.content.height / body.height) - 1; ++i){
-                                // duplicate the page with the full body content
-                                let clone = utilities.duplicateNode(page.node);
-                                // subsequent pages shouldn't have a header
-                                clone.querySelector(".page__header").remove();
-                                // append the duplicate to the preview
-                                preview.getNode().append(clone);
-                                // shift the body content to show overflow from the previous page
-                                let cloneBody = clone.querySelector(".page__body");
-                                // for the scrollTo() method to achieve it's desired effect
-                                // create a tall element at the bottom of the page
-                                new Child().setAttribute({style: `height: ${body.height}px`}).appendTo(cloneBody);
-                                cloneBody.scrollTo(0,((header.height * i) + (body.height * (i + 1))));
-                            }
-                        }
+                        // update progressbar
+                        updatedProgress = await progressbar.setProgress(80);
+                        // create a page to contain the superbill body
+                        let page = await build.page("Superbill", ["tjc-document"]);
+                        // put the page in a preview
+                        let preview = build.preview(page, bodyContent, ["superbill"]);
+                        // update the progressbar
+                        updatedProgress = await progressbar.complete();
+                        // append the preview to the sheet
+                        sheet.append(preview);
                     });
                 break;
             default:
@@ -875,9 +914,9 @@ const build = {
         }
         return ul;
     },
-    page: async (title = "Untitled") => {
+    page: async (title = "Untitled", classList = []) => {
         // create a page
-        let page = new Child().setClassList(["page"]).appendTo().getNode();
+        let page = new Child().setClassList(["page", ...classList]).appendTo().getNode();
     
         // create a header for the page
         let header = new Child().setClassList(["page__header"])
@@ -895,7 +934,7 @@ const build = {
         let clinicDetails = await axis.getClinicDetails(new Client().getCurrentClinic());
     
         // populate the header with a logo, title, and topline
-        new Child("img").setAttribute({src: "assets/joint-logo--small.png"})
+        new Child("img").setAttribute({src: "assets/joint-logo/small.png"})
             .setClassList(["logo"])
             .appendTo(header);
         new Child("h1").setInnerText(title)
@@ -915,10 +954,59 @@ const build = {
 
         return { node: page, header: header, body: body, footer: footer };
     },
+    preview: (page = {}, bodyContent = [], classList = []) => {
+        // create a preview container
+        let preview = new Child("div").setId("extension-preview").setClassList(["extension-variables"]).appendTo().getNode();
+
+        // add print options to the preview
+        let printButton = new Button("Print Preview").setClassList(["surface-button", "fab"]).build(preview);
+        // print the preview when the print button is clicked
+        printButton.getNode().addEventListener("click", () => {
+            // fix the height of the preview
+            preview.style.height = `${utilities.getDimensions(preview).content.height}px`;
+            // move the preview to the body
+            // ? the remaining print styles are completed with css @media
+            document.body.append(preview);
+            // move the preview back to the sheet after print
+            window.addEventListener("afterprint", () => {
+                document.querySelector("#extension-sheet").append(document.querySelector("#extension-preview"));
+            });
+            // actually print the preview
+            window.print();
+        });
+        
+        // and append the page to the preview
+        preview.append(page.node);
+
+        // create a container for body content
+        let contentContainer = new Child().setClassList(classList).appendTo(page.body).getNode();
+        // populate the page body with the body content
+        for(const obj of bodyContent) contentContainer.append(obj.getNode());
+
+        // get dimensions of the page body and header
+        const body = utilities.getDimensions(page.body),
+            header = utilities.getDimensions(page.header);
+
+        // add pages if the body content is too tall
+        if(body.content.height > body.height){
+            for(let i = 0; i < Math.ceil(body.content.height / body.height) - 1; ++i){
+                // duplicate the page with the full body content
+                let clone = utilities.duplicateNode(page.node);
+                // subsequent pages shouldn't have a header
+                clone.querySelector(".page__header").remove();
+                // append the modified duplicate to the preview
+                preview.append(clone);
+                // shift the body content to show overflow from the previous page
+                clone.querySelector(".page__body > div").style.transform = `translateY(-${((header.height * i) + (body.height * (i + 1)))}px`;
+            }
+        }
+        
+        return preview;
+    },
     sheet: () => {
         let sheet = new Child("div")
             .setId(["extension-sheet"])
-            .setClassList(["axis-extension-surface"])
+            .setClassList(["extension-variables", "extension-surface"])
             .appendTo(document.body);
         // create a clear label for the sheet
         new Child("span")
@@ -928,7 +1016,7 @@ const build = {
         // create a button to close the sheet
         new Button()
             .setClassList(["close-modal"])
-            .appendTo(sheet)
+            .build(sheet)
             .getNode().addEventListener("click", async function (e) {
                 e.preventDefault();
                 // slide sheet out to right
@@ -1075,8 +1163,8 @@ const utilities = {
             // convert height and width to number values
             height = parseFloat(height.split("p")[0]);
             width = parseFloat(width.split("p")[0]);
-        // 
-        let dimensions = {
+
+        return {
             content: {
                 height: Math.ceil(node.scrollHeight),
                 width: Math.ceil(node.scrollWidth)
@@ -1084,8 +1172,6 @@ const utilities = {
             height: Math.ceil(height),
             width: Math.ceil(width)
         };
-        console.log(dimensions);
-        return dimensions;
     },
     getRandomId: () => {
         let letters = ["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z"];
