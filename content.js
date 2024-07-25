@@ -136,7 +136,7 @@ class Client {
         }
     }
     getCurrentResource(){
-        // get teh current resource
+        // get the current resource
         let resource = window.location.href.split("/")[3];
         // remove leading pound (#) for front office resources 
         if(resource.split("#").length === 1) return resource;
@@ -313,7 +313,6 @@ class Progressbar extends Child {
         this.value = value;
     }
     build(parent = document.body){
-        if(!this.value) this.classList.push("indeterminate");
         let container = new Child()
             .setId(this.id)
             .setAttribute(this.attributes)
@@ -324,66 +323,90 @@ class Progressbar extends Child {
         return this;
     }
     async complete(){
-        let progressbar = await this.setProgress(100);
-        progressbar.getNode().remove();
-        return true;
-    }
-    #getIndicator(){
-        return this.getNode().querySelector(".progress__indicator");
-    }
-    #getProgress(){
-        return this.getNode().dataset.value;
-    }
-    async #setIndicator(width){
-        let animation = this.#getIndicator().animate([
-            { right: `${this.#getProgress()}%`},
-            { right: `${width}%`}
-        ], {duration: 1500 / (width * 100), iterations: 1, easing: "linear", fill: "forwards"});
-        await animation.finished;
-        animation.commitStyles();
-        animation.cancel();
-        this.value = width;
+        await this.setProgress(100);
+        this.getNode().remove();
     }
     async setProgress(percent = 0){
-        const dimensions = utilities.getDimensions(this.getNode());
-        if(this.getNode().classList.contains("indeterminate")){
-            this.#getIndicator().style.cssText = "animation-iteration-count: 1;"
-            let animationComplete = await new Promise((resolve) => {
-                setTimeout(resolve(true), 1500);
+
+        let a, indicator = this.getNode().querySelector(".progress__indicator");
+        percent > 100 ? false : percent;
+
+        for(const each of indicator.getAnimations()) {
+            each.pause();
+            each.commitStyles();
+            each.cancel();
+        };
+
+        // only indeterminate progress has a right value
+        if(indicator.style.right.length > 0){
+            a = indicator.animate([
+                {left: indicator.style.left, right: indicator.style.right},
+                {right: "0%"},
+                {left: "100%"}
+            ], {
+                duration: apply.duration.long,
+                easing: apply.easing.standard
             });
-            if(animationComplete){
-                this.getNode().classList.remove("indeterminate");
-                await this.#setIndicator(dimensions.width * (percent / 100));
-            }
+            await a.finished;
+            a.cancel();
+            // reset all styles
+            indicator.removeAttribute("style");
+        }
+
+        const dimensions = {
+            progressbar: utilities.getDimensions(this.getNode()),
+            progressIndicator: utilities.getDimensions(indicator)
+        }
+
+        if(percent){
+            const totalWidth = dimensions.progressbar.width;
+            const startWidth = dimensions.progressIndicator.width;
+            const stopWidth = totalWidth * (percent / 100);
+            a = indicator.animate({
+                width: [`${startWidth}px`, `${stopWidth}px`]
+            }, {
+                duration: apply.duration.long * (Math.abs(stopWidth - startWidth) / totalWidth),
+                easing: apply.easing.standard
+            });
+            await a.finished;
+            a.commitStyles();
+            a.cancel();
         } else {
-            await this.#setIndicator(dimensions.width * (percent / 100));
+            a = indicator.animate({
+                left: ["0%","0%","66%","100%"],
+                right: ["100%","33%","0%","0%"]
+            }, {
+                duration: apply.duration.long, 
+                iterations: Infinity, 
+                easing: apply.easing.standard
+            });
         }
         return this;
     }
 }
 const animation = {
-    fade: async (node = Element, fadeIn = false) => {
-        let animation;
+    fade: async (node = document.body, fadeIn = false) => {
+        let a;
         if(fadeIn){
-            animation = node.animate([
+            a = node.animate([
                 {opacity: "0%"},{opacity: "100%"}
-            ], {duration: 250, iterations: 1, easing: "linear", fill: "forwards"});
-            await animation.finished;
-            animation.commitStyles();
-            animation.cancel();
+            ], {duration: 250, iterations: 1, easing: apply.easing.standard, fill: "forwards"});
+            await a.finished;
+            a.commitStyles();
+            a.cancel();
             // allow for chaining
             return node;
         } else {
-            animation = node.animate([
+            a = node.animate([
                 {opacity: "100%"},{opacity: "0%"}
-            ], {duration: 250, iterations: 1, easing: "linear", fill: "forwards"});
-            await animation.finished;
-            animation.commitStyles();
-            animation.cancel();
+            ], {duration: 250, iterations: 1, easing: apply.easing.standard, fill: "forwards"});
+            await a.finished;
+            a.commitStyles();
+            a.cancel();
             node.remove();
         }
     },
-    slide: async (node = Element, from = "right", slideIn = false) => {
+    slide: async (node = document.body, from = "right", slideIn = false) => {
         let keyframes, position;
         if(slideIn) position = { start: 100, end: 0 };
         else position = { start: 0, end: 100 };
@@ -416,13 +439,22 @@ const animation = {
                 console.log(`Warning: "from" parameter at function slide() is invalid.`);
                 return node;
         }
-        let animation = node.animate(keyframes,
-            {duration: 350, iterations: 1, easing: "linear", fill: "forwards"});
-        await animation.finished;
-        animation.commitStyles();
-        animation.cancel();
+        let a = node.animate(keyframes,
+            {duration: apply.duration.short, iterations: 1, easing: apply.easing.standard, fill: "forwards"});
+        await a.finished;
+        a.commitStyles();
+        a.cancel();
         if(slideIn) return node;
         else node.remove(0);
+    }
+}
+
+const apply = {
+    duration: { short: 200, medium: 600, long: 1000 },
+    easing: {
+        standard: "cubic-bezier(0.2, 0.0, 0, 1.0)",
+        accelerate: "cubic-bezier(0, 0, 0, 1)",
+        decelerate: "cubic-bezier(0.3, 0, 1, 1)"
     }
 }
 
@@ -543,7 +575,7 @@ const axis = {
                 // reset the counter
                 i = 0;
                 // update the segmentList to be consistent with axis naming conventions for subluxation levels
-                segmentList = ["sub_c0_c", "sub_c1", "sub_c2", "sub_c3", "sub_c4", "sub_c5", "sub_c6", "sub_c7", "sub_t1", "sub_t2", "sub_t3", "sub_t4", "sub_t5", "sub_t6", "sub_t7", "sub_t8", "sub_t9", "sub_t10", "sub_t11", "sub_t12", "sub_l1", "sub_l2", "sub_l3", "sub_l4", "sub_l5", "sub_pelvis-c", "sub_sacrum"];
+                segmentList = ["sub_c0_c", "sub_c1", "sub_c2", "sub_c3", "sub_c4", "sub_c5", "sub_c6", "sub_c7", "sub_t1", "sub_t2", "sub_t3", "sub_t4", "sub_t5", "sub_t6", "sub_t7", "sub_t8", "sub_t9", "sub_t10", "sub_t11", "sub_t12", "sub_l1", "sub_l2", "sub_l3", "sub_l4", "sub_l5", "sub_sacrum", "sub_pelvis-c"];
                 // check each segment for subluxation 
                 for(const segment of segmentList){
                     if(String(match[segment]) === "1" && i < 36){
@@ -570,7 +602,7 @@ const axis = {
             return error;
         }
     },
-    getStatementBody: async (startDate = dateTime.presentYearStart, endDate = dateTime.today) => {
+    getSuperbillBody: async (startDate = dateTime.presentYearStart, endDate = dateTime.today) => {
 
         // access the current client and patient objects
         let client = new Client(), patient = new Patient();
@@ -581,7 +613,7 @@ const axis = {
             if(startDate instanceof Date && endDate instanceof Date){
                 transactions = await axis.getTransactions(startDate, endDate);
                 visits = await axis.getVisits(startDate, endDate);
-            }  else { throw new Error(`Parameter Instanceof Date is required at getStatementBody().`); }
+            }  else { throw new Error(`Parameter Instanceof Date is required at getSuperbillBody().`); }
         } catch (error) { console.log(error); return error; }
     
         // the statement body includes three lists: meta info, patient info, and an account summary
@@ -603,14 +635,6 @@ const axis = {
         // put these lists into an array for convenience
         let lists = [
             {   
-                content: [
-                    {label: "Issue Date", value: dateTime.getNumberString(dateTime.today)},
-                    {label: "Period", value: `${dateTime.getNumberString(startDate)} - ${dateTime.getNumberString(endDate)}`},
-                    {label: "Reference Number", value: `${patient.name.initials}${dateTime.getNumberString(patient.dob,"mmddyyyy")}`},
-                    {label: "Prepared By", value: `${client.getCurrentUser(true)}`}
-                ]
-            },
-            {   
                 title: "Patient Information",
                 content: [
                     {label: "Name", value: `${patient.name.fullName}`},
@@ -618,6 +642,14 @@ const axis = {
                     {label: "Address", value: `${patient.address.primary.street} ${patient.address.primary.city}, ${patient.address.primary.state} ${patient.address.primary.zip}`},
                     {label: "Phone", value: `${patient.phone.mobile}`},
                     {label: "Email", value: `${patient.email}`}
+                ]
+            },
+            {   
+                content: [
+                    {label: "Issue Date", value: dateTime.getNumberString(dateTime.today)},
+                    {label: "Period", value: `${dateTime.getNumberString(startDate)} - ${dateTime.getNumberString(endDate)}`},
+                    {label: "Reference Number", value: `${patient.name.initials}${dateTime.getNumberString(patient.dob,"mmddyyyy")}`},
+                    {label: "Prepared By", value: `${client.getCurrentUser(true)}`}
                 ]
             },
             {
@@ -632,9 +664,9 @@ const axis = {
         ];
     
         // the statement includes two separate tables: transaction history and visit history
-        let transactionTableContent = [], visitTableContent = [];
+        let transactionTableContent = [], problemTableContent = [], visitTableContent = [];
         // the content of these tables needs to be populated before a table can be generated
-         for(const transaction of transactions){
+        for(const transaction of transactions){
             transactionTableContent.push({
                 Date: dateTime.getNumberString(transaction.date_entered), 
                 Purchase: transaction.product_purchased, 
@@ -642,6 +674,17 @@ const axis = {
                 Payment: transaction.type === "Refund/Void" ? 0 : transaction.amount, 
                 Refund: transaction.type === "Refund/Void" ? transaction.amount : 0
             });
+        }
+        let problemList = []
+        for(const visit of visits){
+            for(const diagnosis of visit.diagnosis){
+                if(!problemList.includes(diagnosis)){
+                    problemList.push(diagnosis);
+                    problemTableContent.push({
+                        Diagnosis: diagnosis
+                    });
+                }
+            }
         }
         for(const visit of visits){
             visitTableContent.push({
@@ -661,6 +704,11 @@ const axis = {
                 content: transactionTableContent
             },
             {
+                title: "Problem List",
+                subtitle: "",
+                content: problemTableContent
+            },
+            {
                 title: "Visit History",
                 subtitle: "",
                 content: visitTableContent
@@ -674,11 +722,11 @@ const axis = {
         // build each list and push each container object to body
         for(const list of lists){
             // create the container object
-            let container = new Child().setClassList(["list"]).appendTo();
+            let container = new Child().setClassList(["superbill__list"]).appendTo();
             // append the title if supplied
-            if(list.title === undefined) new Child("span").setClassList(["list_title"]).setInnerText(list.title).appendTo(container);
+            if(list.title != undefined) new Child("span").setClassList(["list__title"]).setInnerText(list.title).appendTo(container);
             // append the subtitle if supplied
-            if(list.subtitle === undefined) new Child("span").setInnerText(list.subtitle).appendTo(container);
+            if(list.subtitle != undefined) new Child("span").setClassList(["list__subtitle"]).setInnerText(list.subtitle).appendTo(container);
             // append the list if supplied
             if(Array.isArray(list.content)) container.getNode().append(build.list(list.content));
             // push the container to the body
@@ -688,11 +736,11 @@ const axis = {
         // build each list and push each container object to body
         for(const table of tables){
             // create the container object
-            let container = new Child().setClassList(["table"]).appendTo();
+            let container = new Child().setClassList(["superbill__table"]).appendTo();
             // append the title if supplied
-            if(table.title === undefined) new Child("span").setClassList(["list_title"]).setInnerText(table.title).appendTo(container);
+            if(table.title != undefined) new Child("span").setClassList(["table__title"]).setInnerText(table.title).appendTo(container);
             // append the subtitle if supplied
-            if(table.subtitle === undefined) new Child("span").setInnerText(table.subtitle).appendTo(container);
+            if(table.subtitle != undefined) new Child("span").setClassList(["table__subtitle"]).setInnerText(table.subtitle).appendTo(container);
             // append the list if supplied
             if(Array.isArray(table.content)) container.getNode().append(build.table(table.content));
             // push the container to the body
@@ -822,7 +870,7 @@ const build = {
         // the user should know they are interfacing with an extension
         new Child("span")
             .setClassList(["modal-label"])
-            .setInnerText("AXIS Extension")
+            .setInnerText("The AXIS Extension")
             .appendTo(dialog);
         // create a button to close the dialog
         new Button()
@@ -858,18 +906,17 @@ const build = {
                         animation.fade(dialog.getNode(), false);
                         // build a sheet for the superbill
                         let sheet = build.sheet().getNode();
-                        // show progress indicator
-                        let progressbar = new Progressbar().build(sheet), updatedProgress;
+                        // show indeterminate progress indicator
+                        let progressbar = new Progressbar().build(sheet)
+                        progressbar.setProgress(0);
                         // get the superbill body content
-                        let bodyContent = await axis.getStatementBody();
-                        // update progressbar
-                        updatedProgress = await progressbar.setProgress(80);
+                        let bodyContent = await axis.getSuperbillBody();
                         // create a page to contain the superbill body
                         let page = await build.page("Superbill", ["tjc-document"]);
+                        // update the progressbar to show complete
+                        await progressbar.complete();
                         // put the page in a preview
                         let preview = build.preview(page, bodyContent, ["superbill"]);
-                        // update the progressbar
-                        updatedProgress = await progressbar.complete();
                         // append the preview to the sheet
                         sheet.append(preview);
                     });
@@ -905,7 +952,7 @@ const build = {
             for(const key of validKeys) { 
                 if(Object.hasOwn(obj, key)) {
                     new Child(element[key])
-                        .setClassList(["typescale--body"])
+                        .setClassList([])
                         .setInnerText(obj[key])
                         // and append it to the containing list item
                         .appendTo(li);
@@ -934,15 +981,18 @@ const build = {
         let clinicDetails = await axis.getClinicDetails(new Client().getCurrentClinic());
     
         // populate the header with a logo, title, and topline
-        new Child("img").setAttribute({src: "assets/joint-logo/small.png"})
-            .setClassList(["logo"])
+        new Child("img").setAttribute({src: "assets/the-joint-logo/small.png"})
+            .setClassList(["header__logo"])
             .appendTo(header);
         new Child("h1").setInnerText(title)
-            .setClassList(["title"])
+            .setClassList(["header__title"])
             .appendTo(header);
-        new Child("span").setClassList(["topline"])
-            .setInnerText(`This clinic is owned and operated by ${clinicDetails.pc} and managed by ${clinicDetails.bussiness_entity}.`)
-            .appendTo(header);
+        // clinic details are not always complete :(
+        if(clinicDetails.pc.length > 1 && clinicDetails.bussiness_entity.length > 1){
+            new Child("span").setClassList(["header__topline"])
+                .setInnerText(`This clinic is owned and operated by ${clinicDetails.pc} and managed by ${clinicDetails.bussiness_entity}.`)
+                .appendTo(header);
+        }
     
         // populate the footer with this clinic's name, address, phone, and email
         new Child("span")
@@ -956,21 +1006,25 @@ const build = {
     },
     preview: (page = {}, bodyContent = [], classList = []) => {
         // create a preview container
-        let preview = new Child("div").setId("extension-preview").setClassList(["extension-variables"]).appendTo().getNode();
+        let preview = new Child("div").setId("extension-preview").setClassList(["extension-variables", "extension-surface"]).appendTo().getNode();
 
         // add print options to the preview
         let printButton = new Button("Print Preview").setClassList(["surface-button", "fab"]).build(preview);
-        // print the preview when the print button is clicked
-        printButton.getNode().addEventListener("click", () => {
-            // fix the height of the preview
+        // 
+        window.addEventListener("beforeprint", () => {
+            // fix the preview height
             preview.style.height = `${utilities.getDimensions(preview).content.height}px`;
             // move the preview to the body
-            // ? the remaining print styles are completed with css @media
             document.body.append(preview);
-            // move the preview back to the sheet after print
-            window.addEventListener("afterprint", () => {
-                document.querySelector("#extension-sheet").append(document.querySelector("#extension-preview"));
-            });
+        });
+        window.addEventListener("afterprint", () => {
+            // reset the preview height
+            preview.removeAttribute("style");
+            // move the preview to the sheet
+            document.querySelector("#extension-sheet").append(document.querySelector("#extension-preview"));
+        });
+        // print the preview when the print button is clicked
+        printButton.getNode().addEventListener("click", () => {
             // actually print the preview
             window.print();
         });
@@ -1039,14 +1093,18 @@ const build = {
             for(const [key, val] of Object.entries(content[0])) filter.push(key);
         }
         // create a table header
-        let th = new Child("th").appendTo(table);
+        let thead = new Child("thead").appendTo(table);
+        // add a row to the table head
+        let headerRow = new Child("tr").appendTo(thead);
         // populate the header with each key of filter
-        for(const key of filter) new Child("td").setInnerText(key).appendTo(th);
+        for(const key of filter) new Child("th").setInnerText(key).appendTo(headerRow);
 
+        // create a table body
+        let tbody = new Child("tbody").appendTo(table);
         // for each object of content
         for(const obj of content){
             //create a row
-            let row = new Child("tr").appendTo(table);
+            let row = new Child("tr").appendTo(tbody);
             // for each key of filter
             for(const key of filter){
                 // populate the cell with the key value
@@ -1054,7 +1112,7 @@ const build = {
                 // values need to be strings
                 if(typeof value != "string") value = value.toString();
                 // longer strings should get wider cells
-                let classList = ["typescale--body"];
+                let classList = [];
                 if(!wrapContent) classList.push("no-wrap");
                 if(value.length > 24) classList.push("column--wide");
                 // create a cell
@@ -1079,7 +1137,7 @@ const build = {
             });
         });
         // style headers for wide columns
-        table.querySelectorAll("th td").forEach((header, i) => {
+        table.querySelectorAll("thead tr th").forEach((header, i) => {
             if(wideColumns.includes(i)) header.classList.add("column--wide");
         })
         // style cells for wide columns
@@ -1148,6 +1206,10 @@ const dateTime = {
 }
 
 const utilities = {
+    disableStyles: (disable = true) => {
+        if(disable) for(const sheet of document.styleSheets) sheet.disabled = true;
+        else for(const sheet of document.styleSheets) sheet.disabled = false;
+    },
     duplicateNode(node = HTMLElement){
         let clone = node.cloneNode(true);
         clone.id = utilities.getRandomId();

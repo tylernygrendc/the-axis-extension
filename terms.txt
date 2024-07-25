@@ -1,0 +1,107 @@
+Terms of Use
+
+The AXIS Extension ("The Software") is distributed as a free-to-download application for any employee or associate ("The User") of The Joint Chiropractic ("The Joint"). The Software, which extends and streamlines the functionality of The Joint's existing health record and customer management systems ("AXIS"), is provided "as-is" by Dr. Tyler Nygren ("The Developer"). The Software is not endorsed, managed, maintained, or otherwise affiliated with The Joint. Use of The Software implies acceptance of the following terms ("The Terms"):
+
+1. Definitions.
+
+2. End User License Agreement.
+
+(a) The User is hereby granted a License ("The License") to use The Software if:
+
+(i) They are an employee or associate of The Joint and;
+
+(ii) They are authorized by The Joint to use AXIS and;
+
+(iii) They are in good standing with all applicable regulatory boards.
+
+(b) The License does not waive or modify The User's responsibilities and obligations as imposed by The Joint's policies, as well as those imposed by local, state, and federal law.
+
+2.1 Revocation of The License.
+
+(a) The License will be revoked if The User:
+
+(i) Is no longer an employee of The Joint or;
+
+(ii) Is no longer authorized by The Joint to use AXIS or;
+
+(iii) Is no longer in good standing with any applicable regulatory board or;
+
+(iv) Has failed to update The Software to the latest available version.
+
+2.2 Reinstatement of the License. The License may be reinstated if The User meets the conditions established in subsection 2(a) of these Terms and has remedied any applicable cause for revocation as established in subsection 2.1 of these Terms.
+
+3. Privacy.
+
+3.1 Data collection. The Developer may collect The User's information only if it is necessary:
+
+(a) To verify The User or;
+
+(b) To verify The License or;
+
+(c) For the fulfillment of The Terms or;
+
+(d) For technical implementation of a feature of The Software or;
+
+(e) To analyze or improve The Software.
+
+3.2 Limitations on data collection. The Developer will never collect passwords, bank information, payment information (except those details required to maintain an adequate transaction history, if applicable), or protected health information. 
+
+3.3 Disclosure. The Developer will not disclose collected data, except where:
+
+(a) It is required for authentication with AXIS or;
+
+(b) It is otherwise required by law.
+
+3.4 Handling Protected Health Information. 
+
+(a) The Software is intended to streamline and extend features within AXIS, including features that read from and write to its databases containing protected health information. The following requirements and restrictions shall apply to The Developer's handling of protected health information:
+
+(i) The Developer will not use or disclose protected health information other than as required by The Terms or as required by law.
+
+(ii) The Developer will use appropriate safeguards to prevent use or disclosure of protected health information other than as provided for by The Terms.
+
+(iii) The Developer will report any use or disclosure of protected health information not provided for by The Terms of which it becomes aware, including breaches of unsecured protected health information and any security incident of which it becomes aware.
+
+(iv) The Developer will ensure that any subcontractors that create, receive, maintain, or transmit protected health information on behalf of the business associate agree to the same restrictions, conditions, and requirements that apply to The Developer.
+
+(v) The developer will maintain and make available the information required to provide an accounting of disclosures as necessary to satisfy The User’s obligations under law.
+
+(b) The Developer will never store protected health information, except for within The User's browser (on-device) where the following limitations apply:
+
+(i) The data is stored for the purpose of preserving The User's progress and;
+
+(ii) The data is deleted at the end of The User's signed-in session.
+
+(c) Features of The Software may provide The User with an option to copy and download protected health information. The User assumes responsibility for the proper handling and storage of all protected health information downloaded via The Software, and is expected to comply with all applicable rules, guidelines, and laws.
+
+3.5 De-Identified Data. The Developer may collect, analyze, publish, or otherwise use any data that does not identify an individual person or clinic. With regard to de-identification, The Developer is bound by the standards established by the Health Insurance Portability and Accountability Act of 1996.
+
+4. Modifications. 
+
+4.1 To The Software. The Developer may modify The Software from time to time, so long as:
+
+(a) They notify The User if a change is expected to affect use of The Software and;
+
+(b) They provide prior 30 days notice to The User if a feature of The Software is to be removed.
+
+4.2 To The Terms. The Developer may modify The Terms from time to time, so long as:
+
+(a) They provide The User prior 30 days prior notice of the changes and;
+
+(b) They provide The User with a reasonable summary of the changes and;
+
+(c) They make The Terms available to The User.
+
+4.3 Discontinuation. The Developer may discontinue support for The Software, so long as:
+
+(a) They provide 30 days prior notice to the User and;
+
+(b) They allow continued "as-is" use of The Software where it has already been downloaded and;
+
+(c) They publish the most recent source code for use under the GNU General Purpose License (version 3).
+
+5. Effective Period. 
+
+5.1 Effective Date. The Terms will apply to The User upon initial use of The Software. Any modification to The Terms will take effect 30 days following notification to The User.
+
+5.2 Termination. End of support for The Software will also end the effective period for The Terms. Outside of the effective period, The User will assume responsibility for ensuring that use of The Software is complaint with The Joint's policies, as well as with local, state, and federal law. The User, thereafter, will be granted use of The Software under the GNU General Purpose License (version 3).

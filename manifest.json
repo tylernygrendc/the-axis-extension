@@ -1,12 +1,13 @@
 {
     "manifest_version": 3,
-    "name": "Praktiki",
-    "description": "The AXIS Extension",
+    "name": "The AXIS Extension",
+    "description": "Streamline and extend The Joint's electronic systems.",
     "version": "0.10",
     "action": {
         "default_icon": "assets/app-icon/small.png",
-        "default_title": "Praktiki"
+        "default_title": "The AXIS Extension"
     },
+    "author": "tylernygren@gmail.com",
     "content_scripts": [
         {
             "js": ["content.js"],
@@ -23,7 +24,7 @@
     "web_accessible_resources": [
     {
       "resources": [ 
-        "assets/joint-logo/small.png",
+        "assets/the-joint-logo/small.png",
         "fonts/MaterialSymbols.woff2",
         "fonts/RobotoFlex.ttf"
         ],
