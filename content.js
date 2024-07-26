@@ -188,13 +188,21 @@ class Textfield extends Child {
             .appendTo(container);
         return this;
     }
+    #getInputNode(){
+        return this.getNode().querySelector(".text-field__input");
+    }
+    #getHintNode(){
+        return this.getNode().querySelector(".text-field__hint");
+    }
+    #getLabelNode(){
+        return this.getNode().querySelector(".text-field__label");
+    }
     getValue(){
-        let selector = this.isParagraph ? "textarea" : "input";
-        let input = this.getNode().querySelector(selector);
+        let input = this.#getInputNode();
         switch(input.type){
             case "date":
-                if(input.value)
-                return new Date(input.value);
+                if(input.value.length > 0) return new Date(input.value);
+                else return input.value;
             default:
                 return input.value;
         }
@@ -218,6 +226,12 @@ class Textfield extends Child {
             this.type = "text"; 
             console.log(`Warning: Input type "${str}" is invalid.`)
         }
+        return this;
+    }
+    setValue(str=""){
+        this.value = str;
+        Object.assign(this.attributes, { value: str });
+        if(this.exists()) this.#getInputNode().value = str;
         return this;
     }
 }
@@ -618,17 +632,15 @@ const axis = {
         // access the current client and patient objects
         let client = new Client(), patient = new Patient();
 
-        // validate the date inputs
-        if(!startDate instanceof Date) startDate = dateTime.presentYearStart;
-        if(!endDate instanceof Date) startDate = dateTime.today;
+        // validate startDate and endDate
+        if(startDate instanceof Date === false) startDate = dateTime.presentYearStart;
+        if(endDate instanceof Date === false) endDate = dateTime.today;
     
         // get all transactions and visits between startDate and endDate
         let transactions, visits;
         try{
-            if(startDate instanceof Date && endDate instanceof Date){
-                transactions = await axis.getTransactions(startDate, endDate);
-                visits = await axis.getVisits(startDate, endDate);
-            }  else { throw new Error(`Parameter Instanceof Date is required at getSuperbillBody().`); }
+            transactions = await axis.getTransactions(startDate, endDate);
+            visits = await axis.getVisits(startDate, endDate);
         } catch (error) { console.log(error); return error; }
     
         // the statement body includes three lists: meta info, patient info, and an account summary

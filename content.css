@@ -464,7 +464,7 @@
       }
       .page__body {
         position: absolute;
-        inset: var(--margin) var(--margin) calc(var(--margin) * 2) var(--margin);
+        inset: var(--margin) var(--margin) calc(var(--margin) * 1.5) var(--margin);
         overflow: hidden;
 
         .superbill {
@@ -646,7 +646,7 @@
     width: 8.5in !important;
     height: fit-content !important;
     display: block !important;
-    padding: 0.125in !important;
+    padding: 0 !important;
 
     .button.fab {
       display: none;

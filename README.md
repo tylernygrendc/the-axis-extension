@@ -24,3 +24,7 @@ The AXIS Extension for Chrome is currently in  development.
 - [ ] Integrate Touchpoints
 - [ ] Print Resources Announcements/Postings
 - [ ] Print Home Care Resources
+
+## TODO
+ - [ ] Revise and unify error handling
+ - [ ] Host getting started and update information
