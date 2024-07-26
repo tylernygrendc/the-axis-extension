@@ -543,21 +543,21 @@ const axis = {
     
                 // to determine the correct procedure code, count how many regions were manipulated
                 // create an array of keys corresponding to adjusted segments
-                let segmentList = ["spinal_c0_c", "spinal_c1", "spinal_c2", "spinal_c3", "spinal_c4", "spinal_c5", "spinal_c6", "spinal_c7", "t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8", "t9", "t10", "t11", "t12", "l1", "l2", "l3", "l4", "l5", "rpelvis", "lpelvis", "rsacrum", "lsacrum", "shoulderr", "shoulderl", "elbowr", "elbowl", "wristr", "wristl", "hipr", "hipl", "kneer", "kneel", "ankler", "anklel", "ribsr", "ribsl"];
+                let segmentList = ["spinal_c0_c", "spinal_c1", "spinal_c2", "spinal_c3", "spinal_c4", "spinal_c5", "spinal_c6", "spinal_c7", "t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8", "t9", "t10", "t11", "t12", "l1", "l2", "l3", "l4", "l5", "rpelvis", "lpelvis", "rsacrum", "lsacrum", "shoulderr", "shoulderl", "elbowr", "elbowl", "wristr", "wristl", "hipr", "hipl", "kneer", "kneel", "ankler", "anklel"];
                 // create an iteration counter and a place to store manipulated regions
                 let i = 0, spinalRegions = [], extremityRegions = [];
                 // for each possible segment, check to see if has been manipulated
                 for(const segment of segmentList){
-                    if(String(match[segment]).length != 0 && i < 48){
+                    if(String(match[segment]).length != 0 && i <= 40){
                         // determine the region that the joint is of and push the region to the manipulatedRegions array
                         if(i === 0) { spinalRegions.push("head"); }
                         if(i > 0 && i <= 7) { spinalRegions.push("cervical"); i = 7; }
-                        if(i > 7 && i <= 29) { spinalRegions.push("thoracic"); i = 29; }
-                        if(i > 29 && i <= 34) { spinalRegions.push("lumbar"); i = 34; }
-                        if(i > 34 && i <= 36) { spinalRegions.push("pelvis"); i = 36; }
-                        if(i === 37) { spinalRegions.push("sacrum"); }
-                        if(i > 37 && i <= 42) { extremityRegions.push("upper extremity"); i = 41; }
-                        if(i > 42) { extremityRegions.push("lower extremity"); i = 47; }
+                        if(i > 7 && i <= 19) { spinalRegions.push("thoracic"); i = 19; }
+                        if(i > 19 && i <= 24) { spinalRegions.push("lumbar"); i = 24; }
+                        if(i > 24 && i <= 26) { spinalRegions.push("pelvis"); i = 26; }
+                        if(i > 26 && i <= 28){ spinalRegions.push("sacrum"); i = 28;}
+                        if(i > 28 && i <= 34) { extremityRegions.push("upper extremity"); i = 34; }
+                        if(i > 34) { extremityRegions.push("lower extremity"); i = 40; }
                     }
                     // increment the counter
                     ++i;
@@ -582,10 +582,10 @@ const axis = {
                         // determine the region that the joint is of and push the region to the manipulatedRegions array
                         if(i === 0) { visitObject.diagnosis.push("M99.00 SEGMENTAL AND SOMATIC DYSFUNCTION OF HEAD REGION"); }
                         if(i > 0 && i <= 7) { visitObject.diagnosis.push("M99.01 SEGMENTAL AND SOMATIC DYSFUNCTION OF CERVICAL REGION"); i = 7; }
-                        if(i > 7 && i <= 29) { visitObject.diagnosis.push("M99.02 SEGMENTAL AND SOMATIC DYSFUNCTION OF THORACIC REGION"); i = 29; }
-                        if(i > 29 && i <= 34) { visitObject.diagnosis.push("M99.03 SEGMENTAL AND SOMATIC DYSFUNCTION OF LUMBAR REGION"); i = 34; }
-                        if(i === 35) { visitObject.diagnosis.push("M99.04 SEGMENTAL AND SOMATIC DYSFUNCTION OF SACRAL REGION"); }
-                        if(i === 36) { visitObject.diagnosis.push("M99.05 SEGMENTAL AND SOMATIC DYSFUNCTION OF PELVIC REGION"); }
+                        if(i > 7 && i <= 19) { visitObject.diagnosis.push("M99.02 SEGMENTAL AND SOMATIC DYSFUNCTION OF THORACIC REGION"); i = 29; }
+                        if(i > 19 && i <= 24) { visitObject.diagnosis.push("M99.03 SEGMENTAL AND SOMATIC DYSFUNCTION OF LUMBAR REGION"); i = 34; }
+                        if(i === 25) { visitObject.diagnosis.push("M99.04 SEGMENTAL AND SOMATIC DYSFUNCTION OF SACRAL REGION"); }
+                        if(i === 26) { visitObject.diagnosis.push("M99.05 SEGMENTAL AND SOMATIC DYSFUNCTION OF PELVIC REGION"); }
                     }
                     // increment the counter
                     ++i;
