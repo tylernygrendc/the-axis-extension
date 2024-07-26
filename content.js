@@ -186,7 +186,18 @@ class Textfield extends Child {
             .setClassList(["text-field__hint"])
             .setInnerText(this.hint)
             .appendTo(container);
-        return container;
+        return this;
+    }
+    getValue(){
+        let selector = this.isParagraph ? "textarea" : "input";
+        let input = this.getNode().querySelector(selector);
+        switch(input.type){
+            case "date":
+                if(input.value)
+                return new Date(input.value);
+            default:
+                return input.value;
+        }
     }
     setHint(str=""){
         this.hint = str;
@@ -582,8 +593,8 @@ const axis = {
                         // determine the region that the joint is of and push the region to the manipulatedRegions array
                         if(i === 0) { visitObject.diagnosis.push("M99.00 SEGMENTAL AND SOMATIC DYSFUNCTION OF HEAD REGION"); }
                         if(i > 0 && i <= 7) { visitObject.diagnosis.push("M99.01 SEGMENTAL AND SOMATIC DYSFUNCTION OF CERVICAL REGION"); i = 7; }
-                        if(i > 7 && i <= 19) { visitObject.diagnosis.push("M99.02 SEGMENTAL AND SOMATIC DYSFUNCTION OF THORACIC REGION"); i = 29; }
-                        if(i > 19 && i <= 24) { visitObject.diagnosis.push("M99.03 SEGMENTAL AND SOMATIC DYSFUNCTION OF LUMBAR REGION"); i = 34; }
+                        if(i > 7 && i <= 19) { visitObject.diagnosis.push("M99.02 SEGMENTAL AND SOMATIC DYSFUNCTION OF THORACIC REGION"); i = 19; }
+                        if(i > 19 && i <= 24) { visitObject.diagnosis.push("M99.03 SEGMENTAL AND SOMATIC DYSFUNCTION OF LUMBAR REGION"); i = 24; }
                         if(i === 25) { visitObject.diagnosis.push("M99.04 SEGMENTAL AND SOMATIC DYSFUNCTION OF SACRAL REGION"); }
                         if(i === 26) { visitObject.diagnosis.push("M99.05 SEGMENTAL AND SOMATIC DYSFUNCTION OF PELVIC REGION"); }
                     }
@@ -606,6 +617,10 @@ const axis = {
 
         // access the current client and patient objects
         let client = new Client(), patient = new Patient();
+
+        // validate the date inputs
+        if(!startDate instanceof Date) startDate = dateTime.presentYearStart;
+        if(!endDate instanceof Date) startDate = dateTime.today;
     
         // get all transactions and visits between startDate and endDate
         let transactions, visits;
@@ -910,7 +925,7 @@ const build = {
                         let progressbar = new Progressbar().build(sheet)
                         progressbar.setProgress(0);
                         // get the superbill body content
-                        let bodyContent = await axis.getSuperbillBody();
+                        let bodyContent = await axis.getSuperbillBody(startDateTextfield.getValue(), endDateTextfield.getValue());
                         // create a page to contain the superbill body
                         let page = await build.page("Superbill", ["tjc-document"]);
                         // update the progressbar to show complete

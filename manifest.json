@@ -4,7 +4,7 @@
     "description": "Streamline and extend The Joint's electronic systems.",
     "version": "0.10",
     "action": {
-        "default_icon": "assets/app-icon/small.png",
+        "default_icon": "assets/action-icon.png",
         "default_title": "The AXIS Extension"
     },
     "author": "tylernygren@gmail.com",
