@@ -2,12 +2,12 @@
     "manifest_version": 3,
     "name": "The AXIS Extension",
     "description": "Streamline and extend The Joint's electronic systems.",
-    "version": "0.10",
+    "author": "tylernygren@gmail.com",
+    "version": "0.12",
     "action": {
         "default_icon": "assets/action-icon.png",
         "default_title": "The AXIS Extension"
     },
-    "author": "tylernygren@gmail.com",
     "content_scripts": [
         {
             "js": ["content.js"],

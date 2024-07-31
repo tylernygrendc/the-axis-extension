@@ -94,11 +94,12 @@ class Child {
     }
 }
 class Button extends Child {
-    constructor(label = ""){
+    constructor(label = "", icon = ""){
         super();
         this.id = utilities.getRandomId();
         this.classList = ["button"];
         this.attributes = {};
+        this.icon = icon;
         this.label = label;
     }
     build(parent = document.body){
@@ -111,11 +112,23 @@ class Button extends Child {
         new Child("div")
             .setClassList(["button__state"])
             .appendTo(button);
-        new Child("span")
-            .setClassList(["button__label"])
-            .setInnerText(this.label)
-            .appendTo(button);
+        if(this.label.length > 0){
+            new Child("span")
+                .setClassList(["button__label"])
+                .setInnerText(this.label)
+                .appendTo(button);
+        }
+        if(this.icon.length > 0){
+            new Child("span")
+                .setClassList(["button__icon"])
+                .setInnerText(this.icon)
+                .appendTo(button);
+        }
         return button;
+    }
+    setIcon(str=""){
+        this.icon = str;
+        return this;
     }
     setLabel(str=""){
         this.label = str;
@@ -143,10 +156,14 @@ class Client {
         else return resource.split("#")[1].toString().toLowerCase();
     }
     getCurrentUser(formatted = false){
-        let username = JSON.parse(localStorage.getItem("userdata")).username;
-        if(username === undefined){
-            if(this.getCurrentResource() === "tjc_backoffice") username = document.querySelector(".username").innerText;
-            else username = document.querySelector("#userlist button").title;
+        let username = "";
+        if(this.getCurrentResource() === "tjc_backoffice") {
+            const profileNode = document.querySelector(".username");
+            if(typeof profileNode.innerText === "string") username = profileNode.innerText;
+        } else {
+            const profileNode = document.querySelector("#userList button");
+            if(typeof profileNode.title === "string") username = profileNode.title;
+            if(typeof profileNode.dataset.originalTitle === "string") username = profileNode.dataset.originalTitle;
         }
         if(formatted) username = utilities.string.capitalize(username, ".");
         return username;
@@ -369,8 +386,8 @@ class Progressbar extends Child {
                 {right: "0%"},
                 {left: "100%"}
             ], {
-                duration: apply.duration.long,
-                easing: apply.easing.standard
+                duration: animation.duration.long,
+                easing: animation.easing.standard
             });
             await a.finished;
             a.cancel();
@@ -390,8 +407,8 @@ class Progressbar extends Child {
             a = indicator.animate({
                 width: [`${startWidth}px`, `${stopWidth}px`]
             }, {
-                duration: apply.duration.long * (Math.abs(stopWidth - startWidth) / totalWidth),
-                easing: apply.easing.standard
+                duration: animation.duration.long * (Math.abs(stopWidth - startWidth) / totalWidth),
+                easing: animation.easing.standard
             });
             await a.finished;
             a.commitStyles();
@@ -401,21 +418,27 @@ class Progressbar extends Child {
                 left: ["0%","0%","66%","100%"],
                 right: ["100%","33%","0%","0%"]
             }, {
-                duration: apply.duration.long, 
+                duration: animation.duration.long, 
                 iterations: Infinity, 
-                easing: apply.easing.standard
+                easing: animation.easing.standard
             });
         }
         return this;
     }
 }
 const animation = {
+    duration: { short: 200, medium: 600, long: 1000 },
+    easing: {
+    standard: "cubic-bezier(0.2, 0.0, 0, 1.0)",
+    accelerate: "cubic-bezier(0, 0, 0, 1)",
+    decelerate: "cubic-bezier(0.3, 0, 1, 1)"
+    },
     fade: async (node = document.body, fadeIn = false) => {
         let a;
         if(fadeIn){
             a = node.animate([
                 {opacity: "0%"},{opacity: "100%"}
-            ], {duration: 250, iterations: 1, easing: apply.easing.standard, fill: "forwards"});
+            ], {duration: animation.duration.short, iterations: 1, easing: animation.easing.standard, fill: "forwards"});
             await a.finished;
             a.commitStyles();
             a.cancel();
@@ -424,7 +447,7 @@ const animation = {
         } else {
             a = node.animate([
                 {opacity: "100%"},{opacity: "0%"}
-            ], {duration: 250, iterations: 1, easing: apply.easing.standard, fill: "forwards"});
+            ], {duration: animation.duration.short, iterations: 1, easing: animation.easing.standard, fill: "forwards"});
             await a.finished;
             a.commitStyles();
             a.cancel();
@@ -465,21 +488,12 @@ const animation = {
                 return node;
         }
         let a = node.animate(keyframes,
-            {duration: apply.duration.short, iterations: 1, easing: apply.easing.standard, fill: "forwards"});
+            {duration: animation.duration.short, iterations: 1, easing: animation.easing.standard, fill: "forwards"});
         await a.finished;
         a.commitStyles();
         a.cancel();
         if(slideIn) return node;
         else node.remove(0);
-    }
-}
-
-const apply = {
-    duration: { short: 200, medium: 600, long: 1000 },
-    easing: {
-        standard: "cubic-bezier(0.2, 0.0, 0, 1.0)",
-        accelerate: "cubic-bezier(0, 0, 0, 1)",
-        decelerate: "cubic-bezier(0.3, 0, 1, 1)"
     }
 }
 
@@ -755,7 +769,7 @@ const axis = {
             // append the subtitle if supplied
             if(list.subtitle != undefined) new Child("span").setClassList(["list__subtitle"]).setInnerText(list.subtitle).appendTo(container);
             // append the list if supplied
-            if(Array.isArray(list.content)) container.getNode().append(build.list(list.content));
+            if(Array.isArray(list.content)) container.getNode().append(ui.build.list(list.content));
             // push the container to the body
             body.push(container);
         }
@@ -769,7 +783,7 @@ const axis = {
             // append the subtitle if supplied
             if(table.subtitle != undefined) new Child("span").setClassList(["table__subtitle"]).setInnerText(table.subtitle).appendTo(container);
             // append the list if supplied
-            if(Array.isArray(table.content)) container.getNode().append(build.table(table.content));
+            if(Array.isArray(table.content)) container.getNode().append(ui.build.table(table.content));
             // push the container to the body
             body.push(container);
         }
@@ -886,298 +900,6 @@ const axis = {
     }
 }
 
-const build = {
-    dialog: async () => {
-        // create the dialog container
-        let dialog = new Child("dialog")
-            .setId("extension-dialog")
-            .setClassList(["extension-variables", "extension-surface"])
-            .appendTo(document.body);
-        // create a clear label for the dialog
-        // the user should know they are interfacing with an extension
-        new Child("span")
-            .setClassList(["modal-label"])
-            .setInnerText("The AXIS Extension")
-            .appendTo(dialog);
-        // create a button to close the dialog
-        new Button()
-            .setClassList(["close-modal"])
-            .build(dialog)
-            .getNode().addEventListener("click", async function (e) {
-                e.preventDefault();
-                animation.fade(dialog.getNode(), false);
-            });
-        // there could be multiple extension features
-        // features are dependent on the current resource
-        switch(new Client().getCurrentResource()){
-            case "contacts":
-                // on the contacts page, the user can...
-                //* (1) generate a superbill for the current patient
-                let superbillTool = new Child("div").setClassList().appendTo(dialog).getNode();
-                // create a date range selector
-                let superbillDateRange = new Child("div").setClassList(["flex-row"])
-                    .appendTo(superbillTool).getNode();
-                // add start date text field to date range selector
-                let startDateTextfield = new Textfield("Start Date")
-                    .setType("date").build(superbillDateRange);
-                // add end date text field to date range selector
-                let endDateTextfield = new Textfield("End Date")
-                    .setType("date").build(superbillDateRange);
-                // add a button to trigger superbill generation
-                new Button("Print Superbill")
-                    .setClassList(["surface-button", "width--full"])
-                    .build(dialog)
-                    .getNode().addEventListener("click", async function (e){
-                        e.preventDefault();
-                        // remove the dialog
-                        animation.fade(dialog.getNode(), false);
-                        // build a sheet for the superbill
-                        let sheet = build.sheet().getNode();
-                        // show indeterminate progress indicator
-                        let progressbar = new Progressbar().build(sheet)
-                        progressbar.setProgress(0);
-                        // get the superbill body content
-                        let bodyContent = await axis.getSuperbillBody(startDateTextfield.getValue(), endDateTextfield.getValue());
-                        // create a page to contain the superbill body
-                        let page = await build.page("Superbill", ["tjc-document"]);
-                        // update the progressbar to show complete
-                        await progressbar.complete();
-                        // put the page in a preview
-                        let preview = build.preview(page, bodyContent, ["superbill"]);
-                        // append the preview to the sheet
-                        sheet.append(preview);
-                    });
-                break;
-            default:
-                // no features are available for the current page
-                // TODO: tell the user
-                break;
-        }
-        // show dialog (animation.fade of)
-        animation.fade(dialog.getNode(), true);
-    },
-    list: (content = [], editable = { label: false,  value: false}) => {
-        // this method accepts an array of objects and outputs an unordered list
-        let ul = new Child("ul").appendTo().getNode();
-        // only some content keys are valid
-        const validKeys = ["label", "value"];
-        
-        // allow editable content fields
-        let element = {};
-        for(const key of validKeys) { 
-            // if an element is editable, it needs to be an <input>
-            if(editable[key] === true) element[key] = "input";
-            // otherwise, it should be a "span"
-            else element[key] = "span";
-        }
-
-        // for each content object
-        for(const obj of content){
-            // create a list item
-            let li = new Child("li").appendTo(ul).getNode();
-            // create an element containing each key value
-            for(const key of validKeys) { 
-                if(Object.hasOwn(obj, key)) {
-                    new Child(element[key])
-                        .setClassList([])
-                        .setInnerText(obj[key])
-                        // and append it to the containing list item
-                        .appendTo(li);
-                }
-            }
-        }
-        return ul;
-    },
-    page: async (title = "Untitled", classList = []) => {
-        // create a page
-        let page = new Child().setClassList(["page", ...classList]).appendTo().getNode();
-    
-        // create a header for the page
-        let header = new Child().setClassList(["page__header"])
-            .appendTo(page).getNode();
-
-        // create a body for the page
-        let body = new Child('div').setClassList(["page__body"])
-            .appendTo(page).getNode();
-
-        // create a footer for the page
-        let footer = new Child().setClassList(["page__footer"])
-            .appendTo(page).getNode();
-    
-        // get clinic details to populate the header and footer
-        let clinicDetails = await axis.getClinicDetails(new Client().getCurrentClinic());
-    
-        // populate the header with a logo, title, and topline
-        new Child("img").setAttribute({src: "assets/the-joint-logo/small.png"})
-            .setClassList(["header__logo"])
-            .appendTo(header);
-        new Child("h1").setInnerText(title)
-            .setClassList(["header__title"])
-            .appendTo(header);
-        // clinic details are not always complete :(
-        if(clinicDetails.pc.length > 1 && clinicDetails.bussiness_entity.length > 1){
-            new Child("span").setClassList(["header__topline"])
-                .setInnerText(`This clinic is owned and operated by ${clinicDetails.pc} and managed by ${clinicDetails.bussiness_entity}.`)
-                .appendTo(header);
-        }
-    
-        // populate the footer with this clinic's name, address, phone, and email
-        new Child("span")
-            .setInnerText(`The Joint Chiropractic - ${clinicDetails.name} | ${clinicDetails.billing_address_street} ${clinicDetails.billing_address_city}, ${clinicDetails.billing_address_state} ${clinicDetails.billing_address_postalcode}`)
-            .appendTo(footer);
-        new Child("span")
-            .setInnerText(`${clinicDetails.phone1} | ${clinicDetails.email}`)
-            .appendTo(footer);
-
-        return { node: page, header: header, body: body, footer: footer };
-    },
-    preview: (page = {}, bodyContent = [], classList = []) => {
-        // create a preview container
-        let preview = new Child("div").setId("extension-preview").setClassList(["extension-variables", "extension-surface"]).appendTo().getNode();
-
-        // add print options to the preview
-        let printButton = new Button("Print Preview").setClassList(["surface-button", "fab"]).build(preview);
-        // 
-        window.addEventListener("beforeprint", () => {
-            // fix the preview height
-            preview.style.height = `${utilities.getDimensions(preview).content.height}px`;
-            // move the preview to the body
-            document.body.append(preview);
-        });
-        window.addEventListener("afterprint", () => {
-            // reset the preview height
-            preview.removeAttribute("style");
-            // move the preview to the sheet
-            document.querySelector("#extension-sheet").append(document.querySelector("#extension-preview"));
-        });
-        // print the preview when the print button is clicked
-        printButton.getNode().addEventListener("click", () => {
-            // actually print the preview
-            window.print();
-        });
-        
-        // and append the page to the preview
-        preview.append(page.node);
-
-        // create a container for body content
-        let contentContainer = new Child().setClassList(classList).appendTo(page.body).getNode();
-        // populate the page body with the body content
-        for(const obj of bodyContent) contentContainer.append(obj.getNode());
-
-        // get dimensions of the page body and header
-        const body = utilities.getDimensions(page.body),
-            header = utilities.getDimensions(page.header);
-
-        // add pages if the body content is too tall
-        if(body.content.height > body.height){
-            for(let i = 0; i < Math.ceil(body.content.height / body.height) - 1; ++i){
-                // duplicate the page with the full body content
-                let clone = utilities.duplicateNode(page.node);
-                // subsequent pages shouldn't have a header
-                clone.querySelector(".page__header").remove();
-                // append the modified duplicate to the preview
-                preview.append(clone);
-                // shift the body content to show overflow from the previous page
-                clone.querySelector(".page__body > div").style.transform = `translateY(-${((header.height * i) + (body.height * (i + 1)))}px`;
-            }
-        }
-        
-        return preview;
-    },
-    sheet: () => {
-        let sheet = new Child("div")
-            .setId(["extension-sheet"])
-            .setClassList(["extension-variables", "extension-surface"])
-            .appendTo(document.body);
-        // create a clear label for the sheet
-        new Child("span")
-            .setClassList(["modal-label"])
-            .setInnerText("AXIS Extension")
-            .appendTo(sheet);
-        // create a button to close the sheet
-        new Button()
-            .setClassList(["close-modal"])
-            .build(sheet)
-            .getNode().addEventListener("click", async function (e) {
-                e.preventDefault();
-                // slide sheet out to right
-                animation.slide(sheet.getNode(), "right", false);
-            });
-        // slide the sheet of from right
-        animation.slide(sheet.getNode(), "right", true);
-        return sheet;
-    },
-    table: (content = [], filter = [], wrapContent = false, editable = false) => {
-        // this function accepts an array of objects and outputs a semantic html table
-        let table = new Child("table").appendTo().getNode();
-
-        // if there is no content, just return the table
-        if(!content.length) return table;
-
-        // a filter can be specified to only output specified key values
-        // if the filter is an empty array or falsy, this filter should default to all keys on the first object
-        if(!filter.length || filter){
-            for(const [key, val] of Object.entries(content[0])) filter.push(key);
-        }
-        // create a table header
-        let thead = new Child("thead").appendTo(table);
-        // add a row to the table head
-        let headerRow = new Child("tr").appendTo(thead);
-        // populate the header with each key of filter
-        for(const key of filter) new Child("th").setInnerText(key).appendTo(headerRow);
-
-        // create a table body
-        let tbody = new Child("tbody").appendTo(table);
-        // for each object of content
-        for(const obj of content){
-            //create a row
-            let row = new Child("tr").appendTo(tbody);
-            // for each key of filter
-            for(const key of filter){
-                // populate the cell with the key value
-                let value = obj[key];
-                // values need to be strings
-                if(typeof value != "string") value = value.toString();
-                // longer strings should get wider cells
-                let classList = [];
-                if(!wrapContent) classList.push("no-wrap");
-                if(value.length > 24) classList.push("column--wide");
-                // create a cell
-                let cell = new Child("td").setClassList(classList).appendTo(row);
-                // make the cell editable if it should be
-                if(editable) new Child("input").setAttribute({value: value}).appendTo(cell);
-                else cell.getNode().innerText = value;
-                // ! this will create some cells in a column that are wider than others
-            }
-        }
-
-        // adjust cell widths
-        // create an array representing the index of every wide column
-        let wideColumns = [];
-        // for each row in the table
-        table.querySelectorAll("tr").forEach(row => {
-            // check if a cell
-            row.querySelectorAll("td").forEach((cell, i) => {
-                // check if the cell is part of a wide column and store the index of that column
-                // only store indices that haven't been stored already
-                if(cell.classList.contains("column--wide") && !wideColumns.includes(i)) wideColumns.push(i);
-            });
-        });
-        // style headers for wide columns
-        table.querySelectorAll("thead tr th").forEach((header, i) => {
-            if(wideColumns.includes(i)) header.classList.add("column--wide");
-        })
-        // style cells for wide columns
-        table.querySelectorAll("tr").forEach(row => {
-            row.querySelectorAll("td").forEach((cell, i) => {
-                if(wideColumns.includes(i)) cell.classList.add("column--wide");
-            });
-        });
-
-        return table;
-    }
-}
-
 const dateTime = {
     today: new Date(),
     presentYearStart: new Date(new Date().getFullYear(), 0, 1),
@@ -1232,11 +954,281 @@ const dateTime = {
     }
 }
 
-const utilities = {
-    disableStyles: (disable = true) => {
-        if(disable) for(const sheet of document.styleSheets) sheet.disabled = true;
-        else for(const sheet of document.styleSheets) sheet.disabled = false;
+const ui = {
+    build: {
+        dialog: async (body = []) => {
+            // create the dialog container
+            let dialog = new Child("dialog")
+                .setId("extension-dialog")
+                .setClassList(["extension-variables", "extension-surface"])
+                .appendTo(document.body);
+            // create a clear label for the dialog
+            // the user should know they are interfacing with an extension
+            new Child("span")
+                .setClassList(["modal-label"])
+                .setInnerText("The AXIS Extension")
+                .appendTo(dialog);
+            // create a button to close the dialog
+            new Button()
+                .setIcon("close")
+                .setClassList(["close-modal"])
+                .build(dialog)
+                .getNode().addEventListener("click", async function (e) {
+                    e.preventDefault();
+                    animation.fade(dialog.getNode(), false);
+                });
+            // populate the dialog body
+            for(const obj of body){
+                if(obj instanceof Child) dialog.getNode().append(obj.getNode());
+                if(obj instanceof HTMLElement) dialog.getNode().append(obj);
+            }
+            // show dialog (animation.fade of)
+            animation.fade(dialog.getNode(), true);
+        },
+        list: (content = [], editable = { label: false,  value: false}) => {
+            // this method accepts an array of objects and outputs an unordered list
+            let ul = new Child("ul").appendTo().getNode();
+            // only some content keys are valid
+            const validKeys = ["label", "value"];
+            
+            // allow editable content fields
+            let element = {};
+            for(const key of validKeys) { 
+                // if an element is editable, it needs to be an <input>
+                if(editable[key] === true) element[key] = "input";
+                // otherwise, it should be a "span"
+                else element[key] = "span";
+            }
+    
+            // for each content object
+            for(const obj of content){
+                // create a list item
+                let li = new Child("li").appendTo(ul).getNode();
+                // create an element containing each key value
+                for(const key of validKeys) { 
+                    if(Object.hasOwn(obj, key)) {
+                        new Child(element[key])
+                            .setClassList([])
+                            .setInnerText(obj[key])
+                            // and append it to the containing list item
+                            .appendTo(li);
+                    }
+                }
+            }
+            return ul;
+        },
+        page: async (title = "Untitled", classList = []) => {
+            // create a page
+            let page = new Child().setClassList(["page", ...classList]).appendTo().getNode();
+        
+            // create a header for the page
+            let header = new Child().setClassList(["page__header"])
+                .appendTo(page).getNode();
+    
+            // create a body for the page
+            let body = new Child('div').setClassList(["page__body"])
+                .appendTo(page).getNode();
+    
+            // create a footer for the page
+            let footer = new Child().setClassList(["page__footer"])
+                .appendTo(page).getNode();
+        
+            // get clinic details to populate the header and footer
+            let clinicDetails = await axis.getClinicDetails(new Client().getCurrentClinic());
+        
+            // populate the header with a logo, title, and topline
+            new Child("img").setAttribute({src: "assets/the-joint-logo/small.png"})
+                .setClassList(["header__logo"])
+                .appendTo(header);
+            new Child("h1").setInnerText(title)
+                .setClassList(["header__title"])
+                .appendTo(header);
+            // clinic details are not always complete :(
+            if(clinicDetails.pc.length > 1 && clinicDetails.bussiness_entity.length > 1){
+                new Child("span").setClassList(["header__topline"])
+                    .setInnerText(`This clinic is owned and operated by ${clinicDetails.pc} and managed by ${clinicDetails.bussiness_entity}.`)
+                    .appendTo(header);
+            }
+        
+            // populate the footer with this clinic's name, address, phone, and email
+            new Child("span")
+                .setInnerText(`The Joint Chiropractic - ${clinicDetails.name} | ${clinicDetails.billing_address_street} ${clinicDetails.billing_address_city}, ${clinicDetails.billing_address_state} ${clinicDetails.billing_address_postalcode}`)
+                .appendTo(footer);
+            new Child("span")
+                .setInnerText(`${clinicDetails.phone1} | ${clinicDetails.email}`)
+                .appendTo(footer);
+    
+            return { node: page, header: header, body: body, footer: footer };
+        },
+        preview: (page = {}, bodyContent = [], classList = []) => {
+            // create a preview container
+            let preview = new Child("div").setId("extension-preview").setClassList(["extension-variables", "extension-surface"]).appendTo().getNode();
+    
+            // add print options to the preview
+            let printButton = new Button("Print Preview").setClassList(["surface-button", "fab"]).build(preview);
+            // 
+            window.addEventListener("beforeprint", () => {
+                // fix the preview height
+                preview.style.height = `${utilities.getDimensions(preview).content.height}px`;
+                // move the preview to the body
+                document.body.append(preview);
+            });
+            window.addEventListener("afterprint", () => {
+                // reset the preview height
+                preview.removeAttribute("style");
+                // move the preview to the sheet
+                ui.getSheet().append(preview);
+            });
+            // print the preview when the print button is clicked
+            printButton.getNode().addEventListener("click", () => {
+                // actually print the preview
+                window.print();
+            });
+            
+            // and append the page to the preview
+            preview.append(page.node);
+    
+            // create a container for body content
+            let contentContainer = new Child().setClassList(classList).appendTo(page.body).getNode();
+            // populate the page body with the body content
+            for(const obj of bodyContent) contentContainer.append(obj.getNode());
+    
+            // get dimensions of the page body and header
+            const body = utilities.getDimensions(page.body),
+                header = utilities.getDimensions(page.header);
+    
+            // add pages if the body content is too tall
+            if(body.content.height > body.height){
+                for(let i = 0; i < Math.ceil(body.content.height / body.height) - 1; ++i){
+                    // duplicate the page with the full body content
+                    let clone = utilities.duplicateNode(page.node);
+                    // subsequent pages shouldn't have a header
+                    clone.querySelector(".page__header").remove();
+                    // append the modified duplicate to the preview
+                    preview.append(clone);
+                    // shift the body content to show overflow from the previous page
+                    clone.querySelector(".page__body > div").style.transform = `translateY(-${((header.height * i) + (body.height * (i + 1)))}px`;
+                }
+            }
+            
+            return preview;
+        },
+        sheet: (body = []) => {
+            let sheet = new Child("div")
+                .setId(["extension-sheet"])
+                .setClassList(["extension-variables", "extension-surface"])
+                .appendTo(document.body);
+            // create a clear label for the sheet
+            new Child("span")
+                .setClassList(["modal-label"])
+                .setInnerText("The AXIS Extension")
+                .appendTo(sheet);
+            // create a button to close the sheet
+            new Button()
+                .setIcon("close")
+                .setClassList(["close-modal"])
+                .build(sheet)
+                .getNode().addEventListener("click", async function (e) {
+                    e.preventDefault();
+                    // slide sheet out to right
+                    animation.slide(sheet.getNode(), "right", false);
+                });
+            // populate the sheet body
+            for(const obj of body){
+                if(obj instanceof Child) sheet.getNode().append(obj.getNode());
+                if(obj instanceof HTMLElement) sheet.getNode().append(obj);
+            }
+            // slide the sheet of from right
+            animation.slide(sheet.getNode(), "right", true);
+            return sheet;
+        },
+        table: (content = [], filter = [], wrapContent = false, editable = false) => {
+            // this function accepts an array of objects and outputs a semantic html table
+            let table = new Child("table").appendTo().getNode();
+    
+            // if there is no content, just return the table
+            if(!content.length) return table;
+    
+            // a filter can be specified to only output specified key values
+            // if the filter is an empty array or falsy, this filter should default to all keys on the first object
+            if(!filter.length || filter){
+                for(const [key, val] of Object.entries(content[0])) filter.push(key);
+            }
+            // create a table header
+            let thead = new Child("thead").appendTo(table);
+            // add a row to the table head
+            let headerRow = new Child("tr").appendTo(thead);
+            // populate the header with each key of filter
+            for(const key of filter) new Child("th").setInnerText(key).appendTo(headerRow);
+    
+            // create a table body
+            let tbody = new Child("tbody").appendTo(table);
+            // for each object of content
+            for(const obj of content){
+                //create a row
+                let row = new Child("tr").appendTo(tbody);
+                // for each key of filter
+                for(const key of filter){
+                    // populate the cell with the key value
+                    let value = obj[key];
+                    // values need to be strings
+                    if(typeof value != "string") value = value.toString();
+                    // longer strings should get wider cells
+                    let classList = [];
+                    if(!wrapContent) classList.push("no-wrap");
+                    if(value.length > 24) classList.push("column--wide");
+                    // create a cell
+                    let cell = new Child("td").setClassList(classList).appendTo(row);
+                    // make the cell editable if it should be
+                    if(editable) new Child("input").setAttribute({value: value}).appendTo(cell);
+                    else cell.getNode().innerText = value;
+                    // ! this will create some cells in a column that are wider than others
+                }
+            }
+    
+            // adjust cell widths
+            // create an array representing the index of every wide column
+            let wideColumns = [];
+            // for each row in the table
+            table.querySelectorAll("tr").forEach(row => {
+                // check if a cell
+                row.querySelectorAll("td").forEach((cell, i) => {
+                    // check if the cell is part of a wide column and store the index of that column
+                    // only store indices that haven't been stored already
+                    if(cell.classList.contains("column--wide") && !wideColumns.includes(i)) wideColumns.push(i);
+                });
+            });
+            // style headers for wide columns
+            table.querySelectorAll("thead tr th").forEach((header, i) => {
+                if(wideColumns.includes(i)) header.classList.add("column--wide");
+            })
+            // style cells for wide columns
+            table.querySelectorAll("tr").forEach(row => {
+                row.querySelectorAll("td").forEach((cell, i) => {
+                    if(wideColumns.includes(i)) cell.classList.add("column--wide");
+                });
+            });
+    
+            return table;
+        }
     },
+    getDialog: () => {
+        return document.querySelector("#extension-dialog");
+    },
+    getSheet: () => {
+        return document.querySelector("#extension-sheet");
+    },
+    isActive: () =>{
+        if(ui.getDialog() instanceof HTMLElement || ui.getSheet() instanceof HTMLElement) return true;
+        else return false;
+    },
+    reset: () => {
+        animation.fade(ui.getDialog(), false);
+        animation.slide(ui.getSheet(), "right", false);
+    }
+}
+
+const utilities = {
     duplicateNode(node = HTMLElement){
         let clone = node.cloneNode(true);
         clone.id = utilities.getRandomId();
@@ -1299,18 +1291,88 @@ const utilities = {
     }
 }
 
-// listen for user to click the action (extension) button
+// access typeface
+const robotoFlex = chrome.runtime.getURL("fonts/RobotoFlex.ttf");
+const materialSymbols = chrome.runtime.getURL("fonts/MaterialSymbols.woff2");
+new Child("style").setInnerText(`@font-face{font-family: "Roboto Flex"; src: url(${robotoFlex});}@font-face{font-family:"Material Symbols"; src: url(${materialSymbols});}`).appendTo(document.head)
+
+// listen for install/update
+// chrome.runtime.onInstalled.addListener(function(e){
+//     switch(e.reason){
+//         case chrome.runtime.OnInstalledReason.INSTALL:
+//             // display terms of service
+//             // chrome.runtime.setUninstallURL();
+//             break;
+//         case chrome.runtime.OnInstalledReason.UPDATE:
+//             // do something
+//             break;
+//         default:
+//             break;
+//     }
+// });
+
+// listen for user to click the action button
 chrome.runtime.onMessage.addListener(function(message, sender, response){
     // access the source of the message
-    // it could come from other places (?)
-    switch(message.source){
-        case "action":
-        default:
-            // build the extension dialog
-            // only if it isn't already part of the DOM
-            // otherwise, remove the extension dialog
-            if(document.querySelector("#extension-dialog") === null) build.dialog();
-            else document.querySelector("#extension-dialog").remove();
-            break;
+    if(message.source === "action"){
+        if(ui.isActive()){
+            ui.reset();
+        } else {
+            switch(new Client().getCurrentResource()){
+                case "tjc_backoffice":
+                    break;
+                case "contacts":
+                    // create the superbill generator
+                    let superbillTool = new Child("div").setClassList().appendTo();
+
+                    // create a date range selector
+                    let superbillDateRange = new Child("div").setClassList(["flex-row"])
+                        .appendTo(superbillTool).getNode();
+                    let startDateTextfield = new Textfield("Start Date")
+                        .setType("date").build(superbillDateRange);
+                    let endDateTextfield = new Textfield("End Date")
+                        .setType("date").build(superbillDateRange);
+
+                    // add a button to trigger superbill generation
+                    new Button("Print Superbill")
+                        .setClassList(["surface-button", "width--full"])
+                        .build(superbillTool)
+                        .getNode().addEventListener("click", async function (e){
+                            e.preventDefault();
+                            // remove the dialog
+                            animation.fade(ui.getDialog(), false);
+
+                            // build a sheet for the superbill
+                            let sheet = ui.build.sheet().getNode();
+
+                            // show progress indicator
+                            let progressbar = new Progressbar().build(sheet)
+                                progressbar.setProgress(0);
+
+                            // get the superbill body content
+                            let bodyContent = await axis.getSuperbillBody(startDateTextfield.getValue(), endDateTextfield.getValue());
+                            // create a page to contain the superbill body
+                            let page = await ui.build.page("Superbill", ["tjc-document"]);
+
+                            // update the progressbar to show complete
+                            await progressbar.complete();
+
+                            // put the page in a preview
+                            let preview = ui.build.preview(page, bodyContent, ["superbill"]);
+
+                            // append the preview to the sheet
+                            sheet.append(preview);
+                        });
+
+                    // TODO: add other features
+
+                    // build dialog containing features
+                    ui.build.dialog([superbillTool]);
+                    break;
+                case "home":
+                default:
+                    break;
+            }
+        }
     }
 });

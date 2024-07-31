@@ -1,17 +1,3 @@
-/* typeface */
-
-@font-face {
-  font-family: "Roboto Flex";
-  font-style: normal;
-  src: url(/fonts/RobotoFlex.ttf) format("ttf");
-}
-
-@font-face {
-  font-family: "Material Symbols";
-  font-style: normal;
-  src: url(/fonts/MaterialSymbols.woff2) format("woff2");
-}
-
 /* color */
 
 .extension-variables {
@@ -33,7 +19,7 @@
 }
 
 .extension-variables {
-  --typeface: "Roboto Flex", sans-serif;
+  --typeface: "Roboto Flex";
   --transition-on-hover: 250ms;
   --transition-on-hide: 500ms;
   --surface-corner: 1rem;
@@ -168,6 +154,7 @@
     box-shadow: none;
     border: 0;
     border-radius: var(--surface-corner);
+    color: var(--on-surface);
     overflow: hidden;
 
     /* button styles */
@@ -188,9 +175,13 @@
       background: var(--primary-color);
       color: var(--on-primary);
     }
+    &:not(:has(.button__label)){
+      border-radius: 50%;
+      padding: 0.75rem;
+    }
 
     /* child elements */
-    & .button__label {
+    .button__label {
       z-index: 2;
       position: relative;
       font-family: var(--typeface);
@@ -203,7 +194,23 @@
       line-height: 1rem;
       white-space: nowrap;
     }
-    & .button__state {
+
+    .button__icon{
+      z-index: 2;
+      position: relative;
+      font-family: "Material Symbols";
+      font-weight: normal;
+      font-style: normal;
+      font-size: 1.25rem;
+      line-height: 1;
+      text-transform: none;
+      letter-spacing: normal;
+      word-wrap: normal;
+      white-space: nowrap;
+      direction: ltr;
+    }
+
+    .button__state {
       z-index: 1;
       position: absolute;
       inset: 0;
@@ -226,13 +233,10 @@
     &.close-modal {
       position: absolute;
       inset: 0.5rem 0.5rem auto auto;
-      border-radius: 50%;
-      padding: 0.75rem;
-      & .button__label::before {
+      & .button__icon {
         position: absolute;
         inset: 50% auto auto 50%;
         translate: -50% -50%;
-        content: "\2715";
       }
     }
   }
@@ -452,7 +456,6 @@
         .header__topline {
           position: absolute;
           inset: 0 auto auto 0;
-          max-width: calc(6in - (var(--margin) * 2));
           margin: 0;
           padding: 0;
           border: 0;
