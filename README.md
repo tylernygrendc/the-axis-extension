@@ -1,9 +1,9 @@
-# The AXIS Extension for Chrome
+# The AXIS Extension
 
 AXIS is the combined heath record and customer management system utilized by [The Joint Chiropractic](https://www.thejoint.com/our-story), the largest chiropractic clinic system in the United States. This Chrome Extension project is intended to extend and streamline AXIS features, enhancing the user experience and increasing employee productivity. Successful grassroots adoption of this system has the potential to improve both the patient and employee experience, as well as to increase the quality of chiropractic services, on a national scale.
 
 ## Version Details
-The AXIS Extension for Chrome is currently in  development.
+The AXIS Extension verison 0.10 is now available on [The Chrome Web Store](https://chromewebstore.google.com/detail/the-axis-extension/gmhmfihiblelkdckpclocgpaogamnbck).
 
 ## AXIS Extension Features
 - [x] Print/Save Superbill/Statement for Services
