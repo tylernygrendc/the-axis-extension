@@ -1,19 +1,16 @@
 class Child {
     constructor(tag = "div"){
         this.tag = tag;
-        this.id = utilities.getRandomId();
+        this.id = _.getRandomId();
         this.classList = [];
         this.attributes = {};
         this.innerText = "";
     }
-    appendTo(parent = document.body){
-        let child = this.#create();
-        if(parent instanceof Child) document.querySelector(`#${parent.id}`).append(child);
+    appendTo(parent = queue){
+        let child = this.#create()
+        if(parent instanceof Child) _.getElement(`#${parent.id}`).append(child);
         if(parent instanceof HTMLElement) parent.append(child);
-        if(typeof parent === "string") document.querySelector(`${string}`).append(child);
-        if(!parent instanceof Child && !parent instanceof HTMLElement && !typeof parent === "string"){
-            throw new Error(`Parameter instance of Child or HTMLElement is required at method appendTo() on Child.`)
-        }
+        if(_.type.is.string(parent)) _.getElement(`${string}`).append(child);
         return this;
     }
     #create(){
@@ -24,7 +21,7 @@ class Child {
             if(this.tag === "img" && key === "src" ) child.src = chrome.runtime.getURL(val);
             else child.setAttribute(key, val);
         }
-        if(typeof this.innerText === "string"){
+        if(_type.is.string(this.innerText)){
             let text = document.createTextNode(this.innerText);
             child.appendChild(text);
         }
@@ -33,9 +30,9 @@ class Child {
     exists(){
         return this.getNode() === null ? false : true;
     }
-    getAttributes(node = document.body){
-        // allow the option to pass a querySelector string
-        if(typeof node === "string") node = document.querySelector(node);
+    getAttributes(node){
+        // allow the option to pass a selector string
+        if(_.type.is.string(node)) node = _.getElement(node);
         // iterate over attributes and return an object of attributes
         // don't include excluded attributes
         let attributes = {}, excluded = ["id", "class"];
@@ -46,24 +43,36 @@ class Child {
         return attributes;
     }
     getNode(){
-        return document.querySelector(`#${this.id}`);
+        return _.getElement(`#${this.id}`);
+    }
+    getElement(selector = "", fallback = null){
+        try{
+            return this.getNode().querySelector(selector);
+        } catch (err){
+            return fallback;
+        }
+    }
+    getElements(selector = "", fallback = []){
+        try{
+            return this.getNode().querySelectorAll(selector);
+        } catch (err) {
+            return fallback;
+        }
     }
     getParent(){
-        return document.querySelector(`#${this.id}`).parentElement;
+        return _.getElement(`#${this.id}`).parentElement;
+    }
+    objectify(node){
+        return new Child(node.tagName)
+            .setId(node.id.length > 0 ? node.id : _.getRandomId())
+            .setClassList(node.classList)
+            .setAttribute(this.getAttributes(node))
+            .setInnerText(node.innerText);
     }
     setAttribute(object = {}){
-        switch(typeof object) {
-            case "object":
-                if(Array.isArray(object)) console.log(`Warning: setAttribute() method on Child expects parameter type of object but was passed type of array instead. Attributes were not be applied to Child object:`, this);
-                else Object.assign(this.attributes, object);
-                break;
-            case "string":
-                Object.assign(this.attributes, { [object]: "" });
-                break;
-            default:
-                console.log(`Warning: setAttribute() method on Child expects parameter type of object but was passed type of ${ object } instead. Attributes were not be applied to Child object:`, this);
-                break;
-        }
+        if(_.type.is.object(string)) Object.assign(this.attributes, { [object]: "" });
+        if(_.type.is.object(object)) Object.assign(this.attributes, object);
+        else _.error.log(`Expected parameter type of object, but received ${ _.type.is.array(object) ? "array" : typeof object } instead.`);
         return this;
     }
     setClassList(array = []){
@@ -79,15 +88,8 @@ class Child {
         this.innerText = str;
         return this;
     }
-    objectify(node){
-        return new Child(node.tagName)
-            .setId(node.id)
-            .setClassList(node.classList)
-            .setAttribute(this.getAttributes(node))
-            .setInnerText(node.innerText);
-    }
     update(){
-        let outdated = document.querySelector(`#${this.id}`);
+        let outdated = _.getElement(`#${this.id}`);
         let updated = this.#create();
         outdated.replaceWith(updated);
         return this;
@@ -96,13 +98,13 @@ class Child {
 class Button extends Child {
     constructor(label = "", icon = ""){
         super();
-        this.id = utilities.getRandomId();
+        this.id = _.getRandomId();
         this.classList = ["button"];
         this.attributes = {};
         this.icon = icon;
         this.label = label;
     }
-    build(parent = document.body){
+    build(parent = queue){
         // create the button
         let button = new Child("button")
             .setId(this.id)
@@ -143,9 +145,9 @@ class Client {
     }
     getCurrentClinic(){
         if(this.getCurrentResource() === "tjc_backoffice"){
-            return document.querySelector("#currentClinic").innerText;
+            return _.getElement("#currentClinic").innerText;
         } else {
-            return document.querySelector(".header-current-clinic").innerText;
+            return _.getElement(".header-current-clinic").innerText;
         }
     }
     getCurrentResource(){
@@ -158,14 +160,14 @@ class Client {
     getCurrentUser(formatted = false){
         let username = "";
         if(this.getCurrentResource() === "tjc_backoffice") {
-            const profileNode = document.querySelector(".username");
+            const profileNode = _.getElement(".username");
             if(typeof profileNode.innerText === "string") username = profileNode.innerText;
         } else {
-            const profileNode = document.querySelector("#userList button");
+            const profileNode = _.getElement("#userList button");
             if(typeof profileNode.title === "string") username = profileNode.title;
             if(typeof profileNode.dataset.originalTitle === "string") username = profileNode.dataset.originalTitle;
         }
-        if(formatted) username = utilities.string.capitalize(username, ".");
+        if(formatted) username = _.string.capitalize(username, ".");
         return username;
     }
 }
@@ -173,7 +175,7 @@ class Client {
 class Textfield extends Child {
     constructor(label = "", isParagraph = false){
         super();
-        this.id = utilities.getRandomId();
+        this.id = _.getRandomId();
         this.name = label;
         this.isParagraph = isParagraph;
         this.classList = ["text-field"];
@@ -181,7 +183,7 @@ class Textfield extends Child {
         this.label = label;
         this.hint = false;
     }
-    build(parent = document.body){
+    build(parent = queue){
         // build the textfield
         let container = new Child("div")
             .setId(this.id)
@@ -206,13 +208,13 @@ class Textfield extends Child {
         return this;
     }
     #getInputNode(){
-        return this.getNode().querySelector(".text-field__input");
+        return this.getElement(".text-field__input");
     }
     #getHintNode(){
-        return this.getNode().querySelector(".text-field__hint");
+        return this.getElement(".text-field__hint");
     }
     #getLabelNode(){
-        return this.getNode().querySelector(".text-field__label");
+        return this.getElement(".text-field__label");
     }
     getValue(){
         let input = this.#getInputNode();
@@ -241,7 +243,7 @@ class Textfield extends Child {
         }
         else { 
             this.type = "text"; 
-            console.log(`Warning: Input type "${str}" is invalid.`)
+            _.error.log(`Invalid type attribute on input.`)
         }
         return this;
     }
@@ -271,40 +273,40 @@ class Patient {
     }
     getAddress(){
         // access the node containing primary address details
-        let primaryAddress = document.querySelector("[data-name=primary_address]");
+        let primaryAddress = new Child().objectify(_.getElement("[data-name=primary_address]"));
         // access the node containing billing address details
-        let altAddress = document.querySelector("[data-name=alt_address]");
+        let altAddress = new Child().objectify(_.getElement("[data-name=alt_address]"));
         // create and return an object containing all of the address information available on axis
         return {
             primary: {
-                street: primaryAddress.querySelector("[data-name=primary_address_street]").innerText,
-                city: primaryAddress.querySelector("[data-name=primary_address_city]").innerText,
-                state: primaryAddress.querySelector("[data-name=primary_address_state]").innerText,
-                zip: primaryAddress.querySelector("[data-name=primary_address_postalcode]").innerText
+                street: primaryAddress.getElement("[data-name=primary_address_street]", {innerText: ""}).innerText,
+                city: primaryAddress.getElement("[data-name=primary_address_city]", {innerText: ""}).innerText,
+                state: primaryAddress.getElement("[data-name=primary_address_state]", {innerText: ""}).innerText,
+                zip: primaryAddress.getElement("[data-name=primary_address_postalcode]", {innerText: ""}).innerText
             },
             billing: {
-                street: altAddress.querySelector("[data-name=alt_address_street]").innerText,
-                city: altAddress.querySelector("[data-name=alt_address_city]").innerText,
-                state: altAddress.querySelector("[data-name=alt_address_state]").innerText,
-                zip: altAddress.querySelector("[data-name=alt_address_postalcode]").innerText
+                street: altAddress.getElement("[data-name=alt_address_street]", {innerText: ""}).innerText,
+                city: altAddress.getElement("[data-name=alt_address_city]", {innerText: ""}).innerText,
+                state: altAddress.getElement("[data-name=alt_address_state]", {innerText: ""}).innerText,
+                zip: altAddress.getElement("[data-name=alt_address_postalcode]", {innerText: ""}).innerText
             }
         }
     }
     getAge(){
-        return document.querySelector("[data-fieldname=age_c] .ellipsis_inline").innerText;
+        return _.getElement("[data-fieldname=age_c] .ellipsis_inline").innerText;
     }
     getDOB(){
-        return document.querySelector("[data-fieldname=birthdate] .ellipsis_inline").innerText;
+        return _.getElement("[data-fieldname=birthdate] .ellipsis_inline").innerText;
     }
     getEmail(){
-        return document.querySelector("[data-name=email] a").innerText;
+        return _.getElement("[data-name=email] a").innerText;
     }
     getId(){
         return window.location.href.split("/")[4].toString();
     }
     getName(){
         // get the patient's printed name form axis
-        let nameArray = document.querySelector(`h1 .record-cell[data-type=fullname] .table-cell-wrapper 
+        let nameArray = _.getElement(`h1 .record-cell[data-type=fullname] .table-cell-wrapper 
                 .index span .record-cell[data-type=fullname] .ellipsis_inline`).innerText.split(" ");
     
         // remove any shenanigans
@@ -335,8 +337,8 @@ class Patient {
         };
     }
     getPhone(){
-        let mobilePhone = document.querySelector("[data-fieldname=phone_mobile] a");
-        let otherPhone = document.querySelector("[data-fieldname=phone_other] a");
+        let mobilePhone = _.getElement("[data-fieldname=phone_mobile] a");
+        let otherPhone = _.getElement("[data-fieldname=phone_other] a");
         return {
             mobile: mobilePhone === null ? "" : mobilePhone.innerText,
             other: otherPhone === null ? "" : otherPhone.innerText
@@ -351,10 +353,10 @@ class Progressbar extends Child {
             "data-value": `${value}`
         };
         this.classList = ["progress"];
-        this.id = utilities.getRandomId();
+        this.id = _.getRandomId();
         this.value = value;
     }
-    build(parent = document.body){
+    build(parent = queue){
         let container = new Child()
             .setId(this.id)
             .setAttribute(this.attributes)
@@ -370,7 +372,7 @@ class Progressbar extends Child {
     }
     async setProgress(percent = 0){
 
-        let a, indicator = this.getNode().querySelector(".progress__indicator");
+        let a, indicator = this.getElement(".progress__indicator");
         percent > 100 ? false : percent;
 
         for(const each of indicator.getAnimations()) {
@@ -383,10 +385,10 @@ class Progressbar extends Child {
         if(indicator.style.right.length > 0){
             a = indicator.animate([
                 {left: indicator.style.left, right: indicator.style.right},
-                {right: "0%"},
-                {left: "100%"}
+                {left: indicator.style.left, right: "0%"},
+                {left: "100%", right: "0%"}
             ], {
-                duration: animation.duration.long,
+                duration: animation.duration.medium,
                 easing: animation.easing.standard
             });
             await a.finished;
@@ -396,8 +398,8 @@ class Progressbar extends Child {
         }
 
         const dimensions = {
-            progressbar: utilities.getDimensions(this.getNode()),
-            progressIndicator: utilities.getDimensions(indicator)
+            progressbar: _.getDimensions(this.getNode()),
+            progressIndicator: _.getDimensions(indicator)
         }
 
         if(percent){
@@ -426,6 +428,201 @@ class Progressbar extends Child {
         return this;
     }
 }
+
+const _ = {
+    dateTime: {
+        today: new Date(),
+        presentYearStart: new Date(new Date().getFullYear(), 0, 1),
+        getNumberString: (date = new Date(), model = "") => {
+            // dates come in many forms, but only some are valid
+            const validModels = [
+                'mm-dd-yyyy', 'dd-mm-yyyy', 'mm-dd-yy', 'dd-mm-yy',
+                'mm/dd/yyyy', 'dd/mm/yyyy', 'mm/dd/yy', 'dd/mm/yy',
+                'mmddyyyy', 'ddmmyyyy', 'mmddyy', 'ddmmyy'
+            ];
+            // if the supplied date model is invalid, reset it
+            if(!validModels.includes(model)) model = "mm/dd/yyyy";
+    
+            // check that the date parameter is also valid
+            // try coercing invalid parameters to dates first
+            if(!date instanceof Date) date = new Date(date);
+            // if the parameter can't be coerced, throw an error
+            if(date == "Invalid Date") throw new Error(`Method getNumberString() at dateTime requires a valid date parameter.`)
+    
+            // format the supplied date
+            let year = new Date(date).getFullYear(),
+                month = new Date(date).getMonth() + 1;
+                date = new Date(date).getDate();
+                // convert each to strings
+                year = year.toString();
+                month = month.toString();
+                date = date.toString();
+                // add leading zeros if applicable
+                month = String(month).length === 1 ? "0" + month : month;
+                date = String(date).length === 1 ? "0" + date : date;
+    
+            // test the model to determine the desired delimiter
+            let delimiter = "";
+            if(model.split("-").length > 1) delimiter = "-";
+            if(model.split("/").length > 1) delimiter = "/";
+    
+            // shorten year if applicable
+            if(model.length < 9) year = year.substring(2);
+    
+            // for testing character position, remove delimiters
+            let strArray = model.split(delimiter), modelString = "";
+            for(const str of strArray) modelString += str;
+            // rearrange the string if the date or year leads
+            let numberString = `${month}${delimiter}${date}${delimiter}${year}`;
+            if(modelString.charAt(0) === "d") numberString = `${date}${delimiter}${month}${delimiter}${year}`;
+            if(modelString.charAt(0) === "y" && modelString.charAt(year.length) === "m") 
+                numberString = `${year}${delimiter}${month}${delimiter}${date}`;
+            if(modelString.charAt(0) === "y" && modelString.charAt(year.length) === "d") 
+                numberString = `${year}${delimiter}${date}${delimiter}${month}`;
+    
+            return numberString;
+        }
+    },
+    duplicateNode: (node) => {
+        let clone = node.cloneNode(true);
+        clone.id = _.getRandomId();
+        new Child().objectify(clone).getElements("*", []).forEach(child => {
+            child.id = _.getRandomId();
+        });
+        return clone;
+    },
+    error: {
+        log: (error, critical = false) => {
+            if(error instanceof Error === false) {
+                let errorConstruct = new Error();
+                if(_.type.is.object(error)){
+                    errorConstruct.name = Object.hasOwn(error, "name") ? error.name : "Error";
+                    errorConstruct.message = Object.hasOwn(error, "message") ? error.message : "Something went wrong."
+                } else {
+                    errorConstruct.message = _.type.string(error, "Something went wrong.");
+                }
+            }
+
+            if(critical) {
+                console.error(error.toString(), error);
+            } else {
+                error.name = "Warning";
+                console.warn(error.toString(), error);
+            }
+        }
+    },
+    getDimensions: (node) => {
+        // get height and width
+        let height = window.getComputedStyle(node).getPropertyValue("height"),
+            width = window.getComputedStyle(node).getPropertyValue("width");
+            // convert height and width to number values
+            height = parseFloat(height.split("p")[0]);
+            width = parseFloat(width.split("p")[0]);
+
+        return {
+            content: {
+                height: Math.ceil(node.scrollHeight),
+                width: Math.ceil(node.scrollWidth)
+            },
+            height: Math.ceil(height),
+            width: Math.ceil(width)
+        };
+    },
+    getRandomId: () => {
+        let letters = ["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z"];
+        let leadingLetters = "";
+        for(var i = 0; i < 4; ++i) leadingLetters += letters[Math.floor(Math.random() * 26)];
+        let cryptoString = window.crypto.getRandomValues(new Uint32Array(1))[0].toString(16);
+        return leadingLetters + cryptoString;
+    },
+    getElement: (selector = "", fallback = null) => {
+        try{
+            return document.querySelector(selector);
+        } catch (err){
+            return fallback;
+        }
+    },
+    getElements: (selector = "", fallback = []) => {
+        try{
+            return document.querySelectorAll(selector);
+        } catch (err) {
+            return fallback;
+        }
+    },
+    showPlaceValues: (number = 0, quantity = 2) => {
+        // the number parameter can be typeof string or number
+        // coerce it to a string, regardless of type, and split at the decimal
+        let str = number.toString().split('.');
+        // if the string doesn't have a decimal, add trailing zeros
+        if(str.length === 1) return `${str[0]}.00`;
+        // if it does has a decimal
+        if(str.length > 1) {
+         // make sure there are at least place values to match quantity
+            if(str[1].length < quantity){
+                let trailingZeros = "";
+                for(let i = 0; i < quantity; ++i) trailingZeros += "0";
+                str[1] += trailingZeros;
+            }
+            // trim the place values to match quantity
+            return `${str[0]}.${str[1].substring(0, quantity)}`;
+        }
+    },
+    string: {
+        capitalize: (string, delimiter = " ") => {
+            let capitalized = "";
+            string.split(delimiter).forEach((str, i) => {
+                if(i += 1 < string.length) capitalized += `${str.charAt(0).toUpperCase() + str.slice(1)} `;
+                else `${str.charAt(0).toUpperCase() + str.slice(1)}`;
+            })
+            return capitalized;
+        }
+    },
+    type: {
+        array: (array, fallback = []) => {
+            try{ 
+                if(_.type.is.array(array)) return array;
+                else throw {name: "TypeError", message: "Parameter is not type of array."};
+            } catch (error) { _.error.log(error); return fallback;}
+        },
+        is: {
+            array: (thing) => {
+                if(Array.isArray(thing)) return true;
+                else return false;
+            },
+            number: (thing) => {
+                if(typeof thing === "number") return true;
+                else return false;
+            },
+            object: (thing) => {
+                if(typeof thing === "object" && !Array.isArray(thing)) return true;
+                else return false;
+            },
+            string: (thing) => {
+                if(typeof thing === "string") return true;
+                else return false;
+            }
+        },
+        number: (number, fallback = 0) => {
+            try{ 
+                if(_.type.is.number(number)) return number;
+                else throw {name: "TypeError", message: "Parameter is not type of number."};
+            } catch (error) { _.error.log(error); return fallback; }
+        },
+        object: (object, fallback = {}) => {
+            try{ 
+                if(_.type.is.object(object)) return object;
+                else throw {name: "TypeError", message: "Parameter is not type of object."};
+            } catch (error) { _.error.log(error); return fallback; }
+        },
+        string: (string, fallback = "") => {
+            try{ 
+                if(_.type.is.string(string)) return string;
+                else throw {name: "TypeError", message: "Parameter is not type of string."};
+            } catch (error) { _.error.log(error); return fallback; }
+        }
+    }
+}
+
 const animation = {
     duration: { short: 200, medium: 600, long: 1000 },
     easing: {
@@ -433,7 +630,7 @@ const animation = {
     accelerate: "cubic-bezier(0, 0, 0, 1)",
     decelerate: "cubic-bezier(0.3, 0, 1, 1)"
     },
-    fade: async (node = document.body, fadeIn = false) => {
+    fade: async (node, fadeIn = false) => {
         let a;
         if(fadeIn){
             a = node.animate([
@@ -454,7 +651,7 @@ const animation = {
             node.remove();
         }
     },
-    slide: async (node = document.body, from = "right", slideIn = false) => {
+    slide: async (node, from = "right", slideIn = false) => {
         let keyframes, position;
         if(slideIn) position = { start: 100, end: 0 };
         else position = { start: 0, end: 100 };
@@ -484,7 +681,7 @@ const animation = {
                 ];
                 break;
             default:
-                console.log(`Warning: "from" parameter at function slide() is invalid.`);
+                _.error.log(`"${from}" is an invalid parameter value.`);
                 return node;
         }
         let a = node.animate(keyframes,
@@ -521,29 +718,24 @@ const axis = {
             if(firstResponse.ok) {
                 let clinic = await firstResponse.json();
                 clinicId = clinic.records[0].id;
-                if(clinic.records.length > 1) console.log(`Expected 1 results. Received ${clinic.records.length} results at method getClinicDetails().`);
-            } else { throw `status: ${firstResponse.status}`; }
+                if(clinic.records.length > 1) _.error.log(`Expected 1 results, but received ${clinic.records.length} results.`);
+            } else { throw `${secondResponse.status} ${secondResponse.statusText}`; }
     
             // second request to get detailed information for clinic
             let secondResponse = await fetch(new Request(`https://axis.thejoint.com/rest/v11_20/TJ_Clinics/${clinicId}?erased_fields=true&view=record&fields=my_favorite&viewed=1`), {headers: { "Oauth-Token": new Client().oauth }});
     
             // process second request and return detailed clinic information
             if(secondResponse.ok) return await secondResponse.json(); 
-            else throw `status: ${secondResponse.status}`;
-        } catch (error) {
-            error = error instanceof Error ? error : 
-                new Error(`Server response at getClinicDetails() returned "${error}"`);
-            console.log(error);
-            return error;
-        }
+            else throw `${secondResponse.status} ${secondResponse.statusText}`;
+        } catch (error) { _.error.log(error, true); return {}; }
     },
-    getDetailedVisits: async (startDate = dateTime.presentYearStart, endDate = dateTime.today) => {
+    getDetailedVisits: async (startDate = _.dateTime.presentYearStart, endDate = _.dateTime.today) => {
         try{
             const client = new Client();
             const patient = new Patient();
             // the visits api calls a certain number of visits, starting with the most recent visit
             // set the max_num query equal to the difference between present and startDate
-            let maxNum = Math.ceil((dateTime.today.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
+            let maxNum = Math.ceil((_.dateTime.today.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
     
             // request a quantity of visit records less than or equal to the set maxNum
             let response = await fetch(new Request(`https://axis.thejoint.com/rest/v11_20/Contacts/${ patient.id }/link/contacts_tj_visits_1?erased_fields=true&max_num=${maxNum}`), { headers: {"Oauth-Token": client.oauth} });
@@ -634,28 +826,23 @@ const axis = {
             // return detailed visit information
             return detailedVisits;
     
-        } catch (error){
-            error = error instanceof Error ? error : 
-                new Error(`Server response at readTransactionsFrom() returned "${error}"`);
-            console.log(error);
-            return error;
-        }
+        } catch (error){ _.error.log(error, true); return []; }
     },
-    getSuperbillBody: async (startDate = dateTime.presentYearStart, endDate = dateTime.today) => {
+    getSuperbillBody: async (startDate = _.dateTime.presentYearStart, endDate = _.dateTime.today) => {
 
         // access the current client and patient objects
         let client = new Client(), patient = new Patient();
 
         // validate startDate and endDate
-        if(startDate instanceof Date === false) startDate = dateTime.presentYearStart;
-        if(endDate instanceof Date === false) endDate = dateTime.today;
+        if(startDate instanceof Date === false) startDate = _.dateTime.presentYearStart;
+        if(endDate instanceof Date === false) endDate = _.dateTime.today;
     
         // get all transactions and visits between startDate and endDate
         let transactions, visits;
         try{
             transactions = await axis.getTransactions(startDate, endDate);
             visits = await axis.getVisits(startDate, endDate);
-        } catch (error) { console.log(error); return error; }
+        } catch (error) { _.error.log(error, true); return []; }
     
         // the statement body includes three lists: meta info, patient info, and an account summary
 
@@ -679,7 +866,7 @@ const axis = {
                 title: "Patient Information",
                 content: [
                     {label: "Name", value: `${patient.name.fullName}`},
-                    {label: "Date of Birth", value: `${dateTime.getNumberString(patient.dob)} (age ${patient.age})`},
+                    {label: "Date of Birth", value: `${_.dateTime.getNumberString(patient.dob)} (age ${patient.age})`},
                     {label: "Address", value: `${patient.address.primary.street} ${patient.address.primary.city}, ${patient.address.primary.state} ${patient.address.primary.zip}`},
                     {label: "Phone", value: `${patient.phone.mobile}`},
                     {label: "Email", value: `${patient.email}`}
@@ -687,18 +874,18 @@ const axis = {
             },
             {   
                 content: [
-                    {label: "Issue Date", value: dateTime.getNumberString(dateTime.today)},
-                    {label: "Period", value: `${dateTime.getNumberString(startDate)} - ${dateTime.getNumberString(endDate)}`},
-                    {label: "Reference Number", value: `${patient.name.initials}${dateTime.getNumberString(patient.dob,"mmddyyyy")}`},
+                    {label: "Issue Date", value: _.dateTime.getNumberString(_.dateTime.today)},
+                    {label: "Period", value: `${_.dateTime.getNumberString(startDate)} - ${_.dateTime.getNumberString(endDate)}`},
+                    {label: "Reference Number", value: `${patient.name.initials}${_.dateTime.getNumberString(patient.dob,"mmddyyyy")}`},
                     {label: "Prepared By", value: `${client.getCurrentUser(true)}`}
                 ]
             },
             {
                 title: "Account Summary",
                 content: [
-                    {label: "Total Paid", value: utilities.showPlaceValues(paid, 2)},
-                    {label: "Total Billed", value: utilities.showPlaceValues(billed, 2)},
-                    {label: "Total Refunded", value: utilities.showPlaceValues(refunded, 2)},
+                    {label: "Total Paid", value: _.showPlaceValues(paid, 2)},
+                    {label: "Total Billed", value: _.showPlaceValues(billed, 2)},
+                    {label: "Total Refunded", value: _.showPlaceValues(refunded, 2)},
                     {label: "Total Visits", value: `${visits.length}`}
                 ]
             }
@@ -709,7 +896,7 @@ const axis = {
         // the content of these tables needs to be populated before a table can be generated
         for(const transaction of transactions){
             transactionTableContent.push({
-                Date: dateTime.getNumberString(transaction.date_entered), 
+                Date: _.dateTime.getNumberString(transaction.date_entered), 
                 Purchase: transaction.product_purchased, 
                 Method: transaction.cc_type === "Cash" ? "Cash" : `${transaction.cc_type} (${transaction.last_four})`, 
                 Payment: transaction.type === "Refund/Void" ? 0 : transaction.amount, 
@@ -729,9 +916,9 @@ const axis = {
         }
         for(const visit of visits){
             visitTableContent.push({
-                Date: dateTime.getNumberString(visit.date_entered), 
+                Date: _.dateTime.getNumberString(visit.date_entered), 
                 Procedure: visit.procedure, 
-                Charge: utilities.showPlaceValues(visit.visitCost, 2), 
+                Charge: _.showPlaceValues(visit.visitCost, 2), 
                 Physician: visit.users_tj_visits_2_name, 
                 Location: visit.tj_clinics_tj_visits_1_name
             });
@@ -790,7 +977,7 @@ const axis = {
     
         return body;
     },
-    getTransactions: async (startDate = dateTime.presentYearStart, endDate = dateTime.today) => {
+    getTransactions: async (startDate = _.dateTime.presentYearStart, endDate = _.dateTime.today) => {
         try{
             // check that the input values are *probably* valid
             // ? what could go wrong
@@ -822,20 +1009,15 @@ const axis = {
                 return obj.records;
             }
             else { throw `status: ${response.status}`; }
-        } catch (error){
-            error = error instanceof Error ? error : 
-                new Error(`Server response at readTransactionsFrom() returned "${error}"`);
-            console.log(error);
-            return error;
-        }
+        } catch (error){ _.error.log(error, true); return {}; }
     }, 
-    getVisits: async (startDate = dateTime.presentYearStart, endDate = dateTime.today) => {
+    getVisits: async (startDate = _.dateTime.presentYearStart, endDate = _.dateTime.today) => {
         try{
             const client = new Client();
             const patient = new Patient();
             // the visits api calls a certain number of visits, starting with the most recent visit
             // set the max_num query equal to the difference between present and startDate
-            let maxNum = Math.ceil((dateTime.today.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
+            let maxNum = Math.ceil((_.dateTime.today.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
     
             // request a quantity of visit records less than or equal to the set maxNum
             let response = await fetch(new Request(`https://axis.thejoint.com/rest/v11_20/Contacts/${ patient.id }/link/contacts_tj_visits_1?erased_fields=true&view=subpanel-for-contacts-contacts_tj_visits_1&fields=date_entered%2Cstatus%2Chas_carecard%2Cmy_favorite&max_num=${maxNum}&order_by=date_entered%3Adesc&filter%5B0%5D%5Bstatus%5D=Completed`), { headers: {"Oauth-Token": client.oauth} });
@@ -891,66 +1073,7 @@ const axis = {
             // return an array of all visit records between startDate and endDate
             return records;
     
-        } catch (error){
-            error = error instanceof Error ? error : 
-                new Error(`Server response at readTransactionsFrom() returned "${error}"`);
-            console.log(error);
-            return error;
-        }
-    }
-}
-
-const dateTime = {
-    today: new Date(),
-    presentYearStart: new Date(new Date().getFullYear(), 0, 1),
-    getNumberString: (date = new Date(), model = "") => {
-        // dates come in many forms, but only some are valid
-        const validModels = [
-            'mm-dd-yyyy', 'dd-mm-yyyy', 'mm-dd-yy', 'dd-mm-yy',
-            'mm/dd/yyyy', 'dd/mm/yyyy', 'mm/dd/yy', 'dd/mm/yy',
-            'mmddyyyy', 'ddmmyyyy', 'mmddyy', 'ddmmyy'
-        ];
-        // if the supplied date model is invalid, reset it
-        if(!validModels.includes(model)) model = "mm/dd/yyyy";
-
-        // check that the date parameter is also valid
-        // try coercing invalid parameters to dates first
-        if(!date instanceof Date) date = new Date(date);
-        // if the parameter can't be coerced, throw an error
-        if(date == "Invalid Date") throw new Error(`Method getNumberString() at dateTime requires a valid date parameter.`)
-
-        // format the supplied date
-        let year = new Date(date).getFullYear(),
-            month = new Date(date).getMonth() + 1;
-            date = new Date(date).getDate();
-            // convert each to strings
-            year = year.toString();
-            month = month.toString();
-            date = date.toString();
-            // add leading zeros if applicable
-            month = String(month).length === 1 ? "0" + month : month;
-            date = String(date).length === 1 ? "0" + date : date;
-
-        // test the model to determine the desired delimiter
-        let delimiter = "";
-        if(model.split("-").length > 1) delimiter = "-";
-        if(model.split("/").length > 1) delimiter = "/";
-
-        // shorten year if applicable
-        if(model.length < 9) year = year.substring(2);
-
-        // for testing character position, remove delimiters
-        let strArray = model.split(delimiter), modelString = "";
-        for(const str of strArray) modelString += str;
-        // rearrange the string if the date or year leads
-        let numberString = `${month}${delimiter}${date}${delimiter}${year}`;
-        if(modelString.charAt(0) === "d") numberString = `${date}${delimiter}${month}${delimiter}${year}`;
-        if(modelString.charAt(0) === "y" && modelString.charAt(year.length) === "m") 
-            numberString = `${year}${delimiter}${month}${delimiter}${date}`;
-        if(modelString.charAt(0) === "y" && modelString.charAt(year.length) === "d") 
-            numberString = `${year}${delimiter}${date}${delimiter}${month}`;
-
-        return numberString;
+        } catch (error){ _.error.log(error, true); return error; }
     }
 }
 
@@ -961,7 +1084,7 @@ const ui = {
             let dialog = new Child("dialog")
                 .setId("extension-dialog")
                 .setClassList(["extension-variables", "extension-surface"])
-                .appendTo(document.body);
+                .appendTo(queue);
             // create a clear label for the dialog
             // the user should know they are interfacing with an extension
             new Child("span")
@@ -1069,7 +1192,7 @@ const ui = {
             // 
             window.addEventListener("beforeprint", () => {
                 // fix the preview height
-                preview.style.height = `${utilities.getDimensions(preview).content.height}px`;
+                preview.style.height = `${_.getDimensions(preview).content.height}px`;
                 // move the preview to the body
                 document.body.append(preview);
             });
@@ -1094,20 +1217,20 @@ const ui = {
             for(const obj of bodyContent) contentContainer.append(obj.getNode());
     
             // get dimensions of the page body and header
-            const body = utilities.getDimensions(page.body),
-                header = utilities.getDimensions(page.header);
+            const body = _.getDimensions(page.body),
+                header = _.getDimensions(page.header);
     
             // add pages if the body content is too tall
             if(body.content.height > body.height){
                 for(let i = 0; i < Math.ceil(body.content.height / body.height) - 1; ++i){
                     // duplicate the page with the full body content
-                    let clone = utilities.duplicateNode(page.node);
+                    let clone = _.duplicateNode(page.node);
                     // subsequent pages shouldn't have a header
-                    clone.querySelector(".page__header").remove();
+                    new Child().objectify(clone).getElement(".page__header", {remove:()=>{}}).remove();
                     // append the modified duplicate to the preview
                     preview.append(clone);
                     // shift the body content to show overflow from the previous page
-                    clone.querySelector(".page__body > div").style.transform = `translateY(-${((header.height * i) + (body.height * (i + 1)))}px`;
+                    new Child().objectify(clone).getElement(".page__body > div", {style:{transform: null}}).style.transform = `translateY(-${((header.height * i) + (body.height * (i + 1)))}px`;
                 }
             }
             
@@ -1117,7 +1240,7 @@ const ui = {
             let sheet = new Child("div")
                 .setId(["extension-sheet"])
                 .setClassList(["extension-variables", "extension-surface"])
-                .appendTo(document.body);
+                .appendTo(queue);
             // create a clear label for the sheet
             new Child("span")
                 .setClassList(["modal-label"])
@@ -1144,7 +1267,7 @@ const ui = {
         },
         table: (content = [], filter = [], wrapContent = false, editable = false) => {
             // this function accepts an array of objects and outputs a semantic html table
-            let table = new Child("table").appendTo().getNode();
+            let table = new Child("table").appendTo();
     
             // if there is no content, just return the table
             if(!content.length) return table;
@@ -1190,111 +1313,52 @@ const ui = {
             // create an array representing the index of every wide column
             let wideColumns = [];
             // for each row in the table
-            table.querySelectorAll("tr").forEach(row => {
-                // check if a cell
-                row.querySelectorAll("td").forEach((cell, i) => {
+            table.getElements("tr").forEach(row => {
+                row = new Child().objectify(row);
+                row.getElements("td").forEach((cell, i) => {
                     // check if the cell is part of a wide column and store the index of that column
                     // only store indices that haven't been stored already
                     if(cell.classList.contains("column--wide") && !wideColumns.includes(i)) wideColumns.push(i);
                 });
             });
             // style headers for wide columns
-            table.querySelectorAll("thead tr th").forEach((header, i) => {
+            table.getElements("thead tr th").forEach((header, i) => {
                 if(wideColumns.includes(i)) header.classList.add("column--wide");
             })
             // style cells for wide columns
-            table.querySelectorAll("tr").forEach(row => {
-                row.querySelectorAll("td").forEach((cell, i) => {
+            table.getElements("tr").forEach(row => {
+                row = new Child().objectify(row);
+                row.getElements("td").forEach((cell, i) => {
                     if(wideColumns.includes(i)) cell.classList.add("column--wide");
                 });
             });
     
-            return table;
+            return table.getNode();
         }
     },
     getDialog: () => {
-        return document.querySelector("#extension-dialog");
+        return _.getElement("#extension-dialog");
     },
     getSheet: () => {
-        return document.querySelector("#extension-sheet");
+        return _.getElement("#extension-sheet");
     },
     isActive: () =>{
         if(ui.getDialog() instanceof HTMLElement || ui.getSheet() instanceof HTMLElement) return true;
         else return false;
     },
     reset: () => {
-        animation.fade(ui.getDialog(), false);
         animation.slide(ui.getSheet(), "right", false);
+        animation.fade(ui.getDialog(), false);
     }
 }
 
-const utilities = {
-    duplicateNode(node = HTMLElement){
-        let clone = node.cloneNode(true);
-        clone.id = utilities.getRandomId();
-        clone.querySelectorAll("*").forEach(child => {
-            child.id = utilities.getRandomId();
-        });
-        return clone;
-    },
-    getDimensions: (node = document.body) => {
-        // get height and width
-        let height = window.getComputedStyle(node).getPropertyValue("height"),
-            width = window.getComputedStyle(node).getPropertyValue("width");
-            // convert height and width to number values
-            height = parseFloat(height.split("p")[0]);
-            width = parseFloat(width.split("p")[0]);
-
-        return {
-            content: {
-                height: Math.ceil(node.scrollHeight),
-                width: Math.ceil(node.scrollWidth)
-            },
-            height: Math.ceil(height),
-            width: Math.ceil(width)
-        };
-    },
-    getRandomId: () => {
-        let letters = ["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z"];
-        let leadingLetters = "";
-        for(var i = 0; i < 4; ++i) leadingLetters += letters[Math.floor(Math.random() * 26)];
-        let cryptoString = window.crypto.getRandomValues(new Uint32Array(1))[0].toString(16);
-        return leadingLetters + cryptoString;
-    },
-    showPlaceValues: (number = 0, quantity = 2) => {
-        // the number parameter can be typeof string or number
-        // coerce it to a string, regardless of type, and split at the decimal
-        let str = number.toString().split('.');
-        // if the string doesn't have a decimal, add trailing zeros
-        if(str.length === 1) return `${str[0]}.00`;
-        // if it does has a decimal
-        if(str.length > 1) {
-         // make sure there are at least place values to match quantity
-            if(str[1].length < quantity){
-                let trailingZeros = "";
-                for(let i = 0; i < quantity; ++i) trailingZeros += "0";
-                str[1] += trailingZeros;
-            }
-            // trim the place values to match quantity
-            return `${str[0]}.${str[1].substring(0, quantity)}`;
-        }
-    },
-    string: {
-        capitalize: (string, delimiter = " ") => {
-            let capitalized = "";
-            string.split(delimiter).forEach((str, i) => {
-                if(i += 1 < string.length) capitalized += `${str.charAt(0).toUpperCase() + str.slice(1)} `;
-                else `${str.charAt(0).toUpperCase() + str.slice(1)}`;
-            })
-            return capitalized;
-        }
-    }
-}
-
-// access typeface
+// typeface access
 const robotoFlex = chrome.runtime.getURL("fonts/RobotoFlex.ttf");
 const materialSymbols = chrome.runtime.getURL("fonts/MaterialSymbols.woff2");
 new Child("style").setInnerText(`@font-face{font-family: "Roboto Flex"; src: url(${robotoFlex});}@font-face{font-family:"Material Symbols"; src: url(${materialSymbols});}`).appendTo(document.head)
+
+// create a queue for extension children
+const queue = new Child().setId("extension-queue").appendTo(document.body).getNode();
 
 // listen for install/update
 // chrome.runtime.onInstalled.addListener(function(e){

@@ -347,6 +347,16 @@
   }
 }
 
+/* a queue for children while components are assembled */
+
+#extension-queue {
+  position: fixed;
+  height: 1px;
+  width: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
 /* core components, layout */
 
 #extension-dialog {
