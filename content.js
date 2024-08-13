@@ -21,7 +21,7 @@ class Child {
             if(this.tag === "img" && key === "src" ) child.src = chrome.runtime.getURL(val);
             else child.setAttribute(key, val);
         }
-        if(_type.is.string(this.innerText)){
+        if(_.type.is.string(this.innerText)){
             let text = document.createTextNode(this.innerText);
             child.appendChild(text);
         }
@@ -42,8 +42,8 @@ class Child {
         }
         return attributes;
     }
-    getNode(){
-        return _.getElement(`#${this.id}`);
+    getNode(fallback = null){
+        return _.getElement(`#${this.id}`, fallback);
     }
     getElement(selector = "", fallback = null){
         try{
@@ -59,18 +59,17 @@ class Child {
             return fallback;
         }
     }
-    getParent(){
-        return _.getElement(`#${this.id}`).parentElement;
+    getParentNode(fallback = {parentElement: null}){
+        return this.getNode(fallback).parentElement;
     }
     objectify(node){
-        return new Child(node.tagName)
+        return this.setTag(node.tagName)
             .setId(node.id.length > 0 ? node.id : _.getRandomId())
             .setClassList(node.classList)
-            .setAttribute(this.getAttributes(node))
-            .setInnerText(node.innerText);
+            .setAttribute(this.getAttributes(node));
     }
     setAttribute(object = {}){
-        if(_.type.is.object(string)) Object.assign(this.attributes, { [object]: "" });
+        if(_.type.is.string(object)) Object.assign(this.attributes, { [object]: "" });
         if(_.type.is.object(object)) Object.assign(this.attributes, object);
         else _.error.log(`Expected parameter type of object, but received ${ _.type.is.array(object) ? "array" : typeof object } instead.`);
         return this;
@@ -86,6 +85,10 @@ class Child {
     }
     setInnerText(str=""){
         this.innerText = str;
+        return this;
+    }
+    setTag(str=""){
+        this.tag = str;
         return this;
     }
     update(){
@@ -140,7 +143,7 @@ class Button extends Child {
 class Client {
     constructor(){
         this.oauth = localStorage.getItem("prod:SugarCRM:AuthAccessToken")
-            //? quotations marks must be removed
+            //? quotation marks must be removed
             .toString().split(`"`)[1];
     }
     getCurrentClinic(){
@@ -375,11 +378,16 @@ class Progressbar extends Child {
         let a, indicator = this.getElement(".progress__indicator");
         percent > 100 ? false : percent;
 
-        for(const each of indicator.getAnimations()) {
-            each.pause();
-            each.commitStyles();
-            each.cancel();
-        };
+        let animationList = [];
+        try{ animationList = indicator.getAnimations(); }
+        catch (error) { /* do nothing */ }
+        if(animationList.length > 0) {
+            for(const each of animationList) {
+                each.pause();
+                each.commitStyles();
+                each.cancel();
+            };
+        }
 
         // only indeterminate progress has a right value
         if(indicator.style.right.length > 0){
@@ -501,13 +509,14 @@ const _ = {
                 } else {
                     errorConstruct.message = _.type.string(error, "Something went wrong.");
                 }
+                error = errorConstruct;
             }
 
             if(critical) {
-                console.error(error.toString(), error);
+                console.error(error.toString());
             } else {
                 error.name = "Warning";
-                console.warn(error.toString(), error);
+                console.warn(error.toString());
             }
         }
     },
@@ -1084,7 +1093,7 @@ const ui = {
             let dialog = new Child("dialog")
                 .setId("extension-dialog")
                 .setClassList(["extension-variables", "extension-surface"])
-                .appendTo(queue);
+                .appendTo(document.body);
             // create a clear label for the dialog
             // the user should know they are interfacing with an extension
             new Child("span")
@@ -1225,10 +1234,10 @@ const ui = {
                 for(let i = 0; i < Math.ceil(body.content.height / body.height) - 1; ++i){
                     // duplicate the page with the full body content
                     let clone = _.duplicateNode(page.node);
-                    // subsequent pages shouldn't have a header
-                    new Child().objectify(clone).getElement(".page__header", {remove:()=>{}}).remove();
                     // append the modified duplicate to the preview
                     preview.append(clone);
+                    // subsequent pages shouldn't have a header
+                    new Child().objectify(clone).getElement(".page__header", {remove:()=>{}}).remove();
                     // shift the body content to show overflow from the previous page
                     new Child().objectify(clone).getElement(".page__body > div", {style:{transform: null}}).style.transform = `translateY(-${((header.height * i) + (body.height * (i + 1)))}px`;
                 }
@@ -1240,7 +1249,7 @@ const ui = {
             let sheet = new Child("div")
                 .setId(["extension-sheet"])
                 .setClassList(["extension-variables", "extension-surface"])
-                .appendTo(queue);
+                .appendTo(document.body);
             // create a clear label for the sheet
             new Child("span")
                 .setClassList(["modal-label"])
@@ -1336,19 +1345,24 @@ const ui = {
             return table.getNode();
         }
     },
-    getDialog: () => {
-        return _.getElement("#extension-dialog");
+    empty: (node) => {
+        node.innerHtml = "";
     },
-    getSheet: () => {
-        return _.getElement("#extension-sheet");
+    getDialog: (fallback = null) => {
+        return _.getElement("#extension-dialog", fallback);
+    },
+    getSheet: (fallback = null) => {
+        return _.getElement("#extension-sheet", fallback);
     },
     isActive: () =>{
-        if(ui.getDialog() instanceof HTMLElement || ui.getSheet() instanceof HTMLElement) return true;
-        else return false;
+        if(ui.getDialog() === null && ui.getSheet() === null) return false;
+        else return true;
     },
     reset: () => {
-        animation.slide(ui.getSheet(), "right", false);
-        animation.fade(ui.getDialog(), false);
+        const dialog = ui.getDialog(), sheet = ui.getSheet();
+        if(dialog != null) animation.fade(dialog, false);
+        if(sheet != null) animation.slide(sheet, "right", false);
+        ui.empty(queue);
     }
 }
 
