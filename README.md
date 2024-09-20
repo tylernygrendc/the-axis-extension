@@ -3,7 +3,7 @@
 AXIS is the combined heath record and customer management system utilized by [The Joint Chiropractic](https://www.thejoint.com/our-story). This project is intended to simplify and extend AXIS features, enhancing the user experience and increasing employee productivity. Successful grassroots adoption of this system has the potential to improve both the patient and employee experience on a national scale.
 
 ## Version Details
-The AXIS Extension is now available on [The Chrome Web Store](https://chromewebstore.google.com/detail/the-axis-extension/gmhmfihiblelkdckpclocgpaogamnbck). Version 0.13 introduces:
+The AXIS Extension is now available on [The Chrome Web Store](https://chromewebstore.google.com/detail/the-axis-extension/gmhmfihiblelkdckpclocgpaogamnbck). Version 0.3 introduces:
 - an option to generate a patient work/school excuse slip
 - a queue to store DOM elements while components are constructed
 - a function that clears the queue element before starting new component construction
