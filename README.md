@@ -11,7 +11,7 @@ The AXIS Extension is now available on [The Chrome Web Store](https://chromewebs
 - a bug fix for cases where same-day visits were excluded from reporting
 - more robust error handling
 
-## AXIS Extension Features
+## Planned Features
 - [x] Print Superbill for Services
 - [x] Print Work/School Release for Patient
 - [ ] Documentation Shortcuts/Macros
@@ -20,6 +20,3 @@ The AXIS Extension is now available on [The Chrome Web Store](https://chromewebs
 - [ ] Provide Relevant Treatment Plan Options
 - [ ] Print/Save Wellness Review
 - [ ] View/Copy Previous Note Details
-
-## TODO
- - [ ] Host getting started and update information
