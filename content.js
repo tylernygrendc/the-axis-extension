@@ -6,41 +6,56 @@ class Child {
         this.attributes = {};
         this.innerText = "";
     }
-    appendTo(parent = queue){
-        let child = this.#create()
-        if(parent instanceof Child) _.getElement(`#${parent.id}`).append(child);
-        if(parent instanceof HTMLElement) parent.append(child);
-        if(_.type.is.string(parent)) _.getElement(`${string}`).append(child);
-        return this;
+    appendTo(parent = _.getQueue()){
+        try{
+            let child = this.#create();
+            if(parent instanceof Child) document.querySelector(`#${parent.id}`).append(child);
+            if(parent instanceof HTMLElement) parent.append(child);
+            if(_.type.is.string(parent)) document.querySelector(`${string}`).append(child);
+        } catch(error) {
+            console.warn(error);
+            console.warn(`Could not append ${this} to ${parent}.`);
+        } finally {
+            return this;
+        }
     }
     #create(){
-        let child = document.createElement(this.tag);
-        child.id = this.id;
-        for(const str of this.classList) child.classList.add(str);
-        for(const [key, val] of Object.entries(this.attributes)) {
-            if(this.tag === "img" && key === "src" ) child.src = chrome.runtime.getURL(val);
-            else child.setAttribute(key, val);
+        try {
+            let child = document.createElement(this.tag);
+                child.id = this.id;
+            for(const str of this.classList) child.classList.add(str);
+            for(const [key, val] of Object.entries(this.attributes)) {
+                if(this.tag === "img" && key === "src" ) child.src = chrome.runtime.getURL(val);
+                else child.setAttribute(key, val);
+            }
+            if(_.type.is.string(this.innerText)){
+                let text = document.createTextNode(this.innerText);
+                child.appendChild(text);
+            }
+            return child;
+        } catch(error){
+            console.error(error);
+            console.error(`Could create element from ${this}.`);
         }
-        if(_.type.is.string(this.innerText)){
-            let text = document.createTextNode(this.innerText);
-            child.appendChild(text);
-        }
-        return child;
     }
     exists(){
         return this.getNode() === null ? false : true;
     }
     getAttributes(node){
-        // allow the option to pass a selector string
-        if(_.type.is.string(node)) node = _.getElement(node);
-        // iterate over attributes and return an object of attributes
-        // don't include excluded attributes
-        let attributes = {}, excluded = ["id", "class"];
-        for(let i = 0; i < node.attributes.length; ++i){
-            if(!excluded.includes(node.attributes.item(i).name))
-                attributes[node.attributes.item(i).name] = node.attributes.item(i).value;
+        try{
+            if(_.type.is.string(node)) node = _.getElement(node);
+            let attributes = {}, excluded = ["id", "class"];
+            for(let i = 0; i < node.attributes.length; ++i){
+                if(!excluded.includes(node.attributes.item(i).name)){
+                    attributes[node.attributes.item(i).name] = node.attributes.item(i).value;
+                }
+            }
+            return attributes;
+        } catch(error){
+            console.error(error);
+            console.error(`Could not get attributes of node.`);
         }
-        return attributes;
+        
     }
     getNode(fallback = null){
         return _.getElement(`#${this.id}`, fallback);
@@ -48,35 +63,56 @@ class Child {
     getElement(selector = "", fallback = null){
         try{
             return this.getNode().querySelector(selector);
-        } catch (err){
+        } catch (error){
+            console.warn(error);
             return fallback;
         }
     }
     getElements(selector = "", fallback = []){
         try{
             return this.getNode().querySelectorAll(selector);
-        } catch (err) {
+        } catch (error) {
+            console.warn(error);
             return fallback;
         }
     }
-    getParentNode(fallback = {parentElement: null}){
-        return this.getNode(fallback).parentElement;
+    getParentNode(){
+        try{
+            return this.getNode().parentElement;
+        } catch(error){
+            console.error(error);
+            console.error(`Could not get parent of ${this}.`);
+        }
     }
     objectify(node){
-        return this.setTag(node.tagName)
-            .setId(node.id.length > 0 ? node.id : _.getRandomId())
-            .setClassList(node.classList)
-            .setAttribute(this.getAttributes(node));
+        try{
+            return this.setTag(node.tagName)
+                .setId(node.id.length > 0 ? node.id : _.getRandomId())
+                .setClassList(node.classList)
+                .setAttribute(this.getAttributes(node));
+        } catch(error){
+            console.error(error);
+            console.error(`Could not coerce ${node} to Child object.`);
+        }
     }
     setAttribute(object = {}){
-        if(_.type.is.string(object)) Object.assign(this.attributes, { [object]: "" });
-        if(_.type.is.object(object)) Object.assign(this.attributes, object);
-        else _.error.log(`Expected parameter type of object, but received ${ _.type.is.array(object) ? "array" : typeof object } instead.`);
-        return this;
+        try{
+            if(_.type.is.string(object)) Object.assign(this.attributes, { [object]: "" });
+            if(_.type.is.object(object)) Object.assign(this.attributes, object);
+            if(_.type.isNot.string(object) && _.type.isNot.object(object)){
+                throw new Error(`Expected parameter type of object, but received ${ _.type.is.array(object) ? "array" : typeof object } instead.`);
+            }
+        } catch(error){
+            console.warn(error);
+            console.warn(`Could not set attribute on ${this} from ${object}.`)
+        } finally {
+            return this;
+        }
     }
     setClassList(array = []){
-        if(Array.isArray(array)) for(const str of array) this.classList.push(str);
-        else this.classList.push(array.toString());
+        if(_.type.is.array(array)){
+            for(const str of array) this.classList.push(str);
+        } else { this.classList.push(array.toString()); }
         return this;
     }
     setId(str=""){
@@ -107,7 +143,7 @@ class Button extends Child {
         this.icon = icon;
         this.label = label;
     }
-    build(parent = queue){
+    build(parent = _.getQueue()){
         // create the button
         let button = new Child("button")
             .setId(this.id)
@@ -140,41 +176,163 @@ class Button extends Child {
         return this;
     }
 }
+class Checklist extends Child{
+    constructor(label = "", options = [], trailingCheckbox = false){
+        super();
+        this.id = _.getRandomId();
+        this.classList = trailingCheckbox ? ["checklist", "trailing-checkbox"] : ["checklist"];
+        this.label = label;
+        this.options = options;
+    }
+    build(parent = _.getQueue()){
+        let checklist = new Child().setId(this.id).setClassList(this.classList).appendTo(parent);
+        // add a label
+        new Child().setClassList(["checklist__label"])
+            .setInnerText(this.label).appendTo(checklist);
+        // create a checklist item for each option
+        for(const option of this.options){
+            let checklistItem = new Child().setClassList(["checklist__item"])
+                .appendTo(checklist);
+            // add a checkbox
+            let input = new Child("input").setClassList(["item__input"])
+                .setAttribute({type: "checkbox", name: `${option}`})
+                .appendTo(checklistItem);
+            // add a label
+            if(option === "other"){
+                checklistItem.getNode().dataset.itemType = "other";
+                let other = new Child("input").setClassList(["item__label"])
+                    .setAttribute({type: "text", placeholder: `${option}`})
+                    .appendTo(checklistItem);
+                other.getNode().addEventListener("focus", function () {
+                    try{
+                        this.parentElement.querySelector("input").checked = true;
+                    } catch (error){ 
+                        console.error(error);
+                    }
+                });
+                other.getNode().addEventListener("blur", function () {
+                    try{
+                        this.parentElement.querySelector("input").value = this.value;
+                    } catch (error) {
+                        console.error(error);
+                    }
+                });
+                new Button("Add Other")
+                    .setClassList(["outlined-button"])
+                    .build(checklist)
+                    .getNode().addEventListener("click", function (e) {
+                        e.preventDefault();
+                        try{
+                            let originalOther = this.parentElement.querySelector("[data-item-type=other]");
+                            let cloneOther = _.duplicateNode(originalOther);
+                            cloneOther.value = "";
+                            this.parentNode.insertBefore(cloneOther, originalOther);
+                        } catch (error) {
+                            console.error(error);
+                        }
+                    });
+            } else {
+                new Child("label").setClassList(["item__label"])
+                    .setAttribute({for:`${input.id}`})
+                    .setInnerText(`${option}`).appendTo(checklistItem);
+            }
+            // add a state indicator
+            new Child().setClassList(["item__state"]).appendTo(checklistItem);
+        }
+        return this;
+    }
+    getSelections(){
+        let selection = [];
+        this.getNode().querySelectorAll("input").forEach(option => {
+            if(option.checked) selection.push(option.name);
+        });
+        return selection;
+    }
+}
 class Client {
     constructor(){
+        this.clinic = this.getCurrentClinic();
         this.oauth = localStorage.getItem("prod:SugarCRM:AuthAccessToken")
             //? quotation marks must be removed
             .toString().split(`"`)[1];
+        this.username = this.getCurrentUser();
     }
-    getCurrentClinic(){
-        if(this.getCurrentResource() === "tjc_backoffice"){
-            return _.getElement("#currentClinic").innerText;
-        } else {
-            return _.getElement(".header-current-clinic").innerText;
+    getCurrentApp(fallback = ""){
+        switch(window.location.hostname){
+            case "axis.thejoint.com":
+                return "frontoffice";
+            case "backoffice.thejoint.com":
+                return "backoffice";
+            default:
+                console.warn(new Error(`Current application could not be derived from ${window.location.hostname}.`));
+                return fallback;
+        }
+
+    }
+    getCurrentClinic(fallback = ""){
+        try{
+            if(this.isBackOffice()){
+                return document.querySelector("#currentClinic").innerText;
+            } 
+            if(this.isFrontOffice()){
+                return document.querySelector(".header-current-clinic").innerText;
+            }
+            if(!this.isBackOffice() && !this.isBackOffice()){
+                throw new Error(`Current clinic could not be identified because an unknown application is currently in use.`);
+            }
+        } catch (error){
+            console.warn(error);
+            return fallback;
         }
     }
-    getCurrentResource(){
-        // get the current resource
-        let resource = window.location.href.split("/")[3];
-        // remove leading pound (#) for front office resources 
-        if(resource.split("#").length === 1) return resource;
-        else return resource.split("#")[1].toString().toLowerCase();
+    getFrontOfficeResource(fallback = ""){
+        try{
+            if(this.isFrontOffice()){
+                // Get the hash value and trim trailing directory components
+                // axis.thejoint.com/#Home/randomstring -> #Home/randomstring -> #Home
+                let hash = window.location.hash.split("/")[0];
+                // Format the resulting value ie. #Home -> home
+                return hash.split("#")[1].toString().toLowerCase();
+            } else {
+                throw new Error(`The ${this.getCurrentApp()} application is active. Expected font office application was expected.`)
+            }
+        } catch (error){
+            console.warn(error);
+            return fallback;
+        }
     }
     getCurrentUser(formatted = false){
         let username = "";
-        if(this.getCurrentResource() === "tjc_backoffice") {
-            const profileNode = _.getElement(".username");
-            if(typeof profileNode.innerText === "string") username = profileNode.innerText;
-        } else {
-            const profileNode = _.getElement("#userList button");
-            if(typeof profileNode.title === "string") username = profileNode.title;
-            if(typeof profileNode.dataset.originalTitle === "string") username = profileNode.dataset.originalTitle;
+        try{
+            if(this.isBackOffice()) {
+                const profileNode = document.querySelector(".username");
+                if(_.type.is.string(profileNode.innerText)) username = profileNode.innerText;
+                else throw new Error(`InnerText attribute does not exist on ${profileNode}.`)
+            }
+            if(this.isFrontOffice()) {
+                const profileNode = document.querySelector("#userList button");
+                if(_.type.is.string(profileNode.title)) { username = profileNode.title; }
+                else {
+                    if(_.type.is.string(profileNode.dataset.originalTitle)) username = profileNode.dataset.originalTitle;
+                    else throw new Error(`Both title and originalTitle attributes do not exist on ${profileNode}.`)
+                }
+            }
+            if(formatted) username = _.string.capitalize(username, ".");
+            return username;
+        } catch (error){
+            console.warn(error);
+            return "";
         }
-        if(formatted) username = _.string.capitalize(username, ".");
-        return username;
+    }
+    isBackOffice(){
+        if(this.getCurrentApp() === "backoffice") return true;
+        else return false;
+    }
+    isFrontOffice(){
+        if(this.getCurrentApp() === "frontoffice") return true;
+        else return false;
     }
 }
-
 class Textfield extends Child {
     constructor(label = "", isParagraph = false){
         super();
@@ -186,7 +344,7 @@ class Textfield extends Child {
         this.label = label;
         this.hint = false;
     }
-    build(parent = queue){
+    build(parent = _.getQueue()){
         // build the textfield
         let container = new Child("div")
             .setId(this.id)
@@ -203,6 +361,7 @@ class Textfield extends Child {
             input.setAttribute(this.attributes)
                 .setClassList(["text-field__input"])
                 .appendTo(container);
+            this.#getInputNode().value = this.value;
         // add a hint element if there is a hint
         if(this.hint) new Child("span")
             .setClassList(["text-field__hint"])
@@ -211,20 +370,24 @@ class Textfield extends Child {
         return this;
     }
     #getInputNode(){
-        return this.getElement(".text-field__input");
+        return this.getNode().querySelector(".text-field__input");
     }
     #getHintNode(){
-        return this.getElement(".text-field__hint");
+        return this.getNode().querySelector(".text-field__hint");
     }
     #getLabelNode(){
-        return this.getElement(".text-field__label");
+        return this.getNode().querySelector(".text-field__label");
     }
     getValue(){
         let input = this.#getInputNode();
         switch(input.type){
             case "date":
-                if(input.value.length > 0) return new Date(input.value);
-                else return input.value;
+                try{
+                    return new Date(`${input.value}T00:00`);
+                } catch (error) {
+                    console.warn(error);
+                    return input.value;
+                }
             default:
                 return input.value;
         }
@@ -246,106 +409,157 @@ class Textfield extends Child {
         }
         else { 
             this.type = "text"; 
-            _.error.log(`Invalid type attribute on input.`)
+            console.warn(`Invalid type attribute on input.`)
         }
         return this;
     }
     setValue(str=""){
         this.value = str;
-        Object.assign(this.attributes, { value: str });
         if(this.exists()) this.#getInputNode().value = str;
         return this;
     }
 }
-
 class Patient {
     constructor(){
-        // check that the client is on a patient profile
-        if(new Client().getCurrentResource() === "contacts") {
-            // attach basic patient information to the patient object
-            this.id = this.getId(),
-            this.name = this.getName(),
-            this.age = this.getAge(),
-            this.dob = this.getDOB(),
-            this.address = this.getAddress(),
-            this.phone = this.getPhone(),
-            this.email = this.getEmail()
-        } else {
-            throw new Error(`A patient's profile must be open to access the Patient class.`);
+        try{
+            // check that the client is on a patient profile
+            if(new Client().getFrontOfficeResource() === "contacts") {
+                // attach basic patient information to the patient object
+                this.id = this.getId(),
+                this.name = this.getName(),
+                this.address = this.getAddress(),
+                this.age = this.getAge(),
+                this.dob = this.getDOB(),
+                this.email = this.getEmail(),
+                this.phone = this.getPhone(),
+                this.occupation = this.getOccupation()
+            } else {
+                throw new Error(`A patient's profile must be open to access the Patient class.`);
+            }
+        } catch (error){
+            console.warn(error);
         }
     }
     getAddress(){
-        // access the node containing primary address details
-        let primaryAddress = new Child().objectify(_.getElement("[data-name=primary_address]"));
-        // access the node containing billing address details
-        let altAddress = new Child().objectify(_.getElement("[data-name=alt_address]"));
-        // create and return an object containing all of the address information available on axis
-        return {
-            primary: {
-                street: primaryAddress.getElement("[data-name=primary_address_street]", {innerText: ""}).innerText,
-                city: primaryAddress.getElement("[data-name=primary_address_city]", {innerText: ""}).innerText,
-                state: primaryAddress.getElement("[data-name=primary_address_state]", {innerText: ""}).innerText,
-                zip: primaryAddress.getElement("[data-name=primary_address_postalcode]", {innerText: ""}).innerText
-            },
-            billing: {
-                street: altAddress.getElement("[data-name=alt_address_street]", {innerText: ""}).innerText,
-                city: altAddress.getElement("[data-name=alt_address_city]", {innerText: ""}).innerText,
-                state: altAddress.getElement("[data-name=alt_address_state]", {innerText: ""}).innerText,
-                zip: altAddress.getElement("[data-name=alt_address_postalcode]", {innerText: ""}).innerText
+        let primary = {}, billing = {};
+        try{
+            let primaryAddress = document.querySelector("[data-name=primary_address]");
+            primary = {
+                street: primaryAddress.querySelector("[data-name=primary_address_street]").innerText,
+                city: primaryAddress.querySelector("[data-name=primary_address_city]").innerText,
+                state: primaryAddress.querySelector("[data-name=primary_address_state]").innerText,
+                zip: primaryAddress.querySelector("[data-name=primary_address_postalcode]").innerText
             }
+        } catch (error) {
+            console.warn(error);
+            primary = {street: "", city: "", state: "", zip: ""};
         }
+        try{
+            let altAddress = document.querySelector("[data-name=alt_address]");
+            billing = {
+                street: altAddress.querySelector("[data-name=alt_address_street]").innerText,
+                city: altAddress.querySelector("[data-name=alt_address_city]").innerText,
+                state: altAddress.querySelector("[data-name=alt_address_state]").innerText,
+                zip: altAddress.querySelector("[data-name=alt_address_postalcode]").innerText
+            }
+        } catch (error) {
+            console.warn(error);
+            billing = {street: "", city: "", state: "", zip: ""};
+        }
+        return {primary: primary, billing: billing};
     }
     getAge(){
-        return _.getElement("[data-fieldname=age_c] .ellipsis_inline").innerText;
+        let age = "";
+        try{
+            age = document.querySelector("[data-fieldname=age_c] .ellipsis_inline").innerText;
+        } catch (error) {
+            console.warn(error);
+            age = "";
+        } finally {
+            return age;
+        }
     }
     getDOB(){
-        return _.getElement("[data-fieldname=birthdate] .ellipsis_inline").innerText;
+        let dob = "";
+        try{
+            dob = document.querySelector("[data-fieldname=birthdate] .ellipsis_inline").innerText;
+        } catch (error) {
+            console.warn(error);
+            dob = "";
+        } finally {
+            return dob;
+        }
     }
     getEmail(){
-        return _.getElement("[data-name=email] a").innerText;
+        let email = "";
+        try{
+            email = document.querySelector("[data-name=email] a").innerText;
+        } catch (error) {
+            console.warn(error);
+            email = "";
+        } finally {
+            return email;
+        }
     }
     getId(){
         return window.location.href.split("/")[4].toString();
     }
     getName(){
-        // get the patient's printed name form axis
-        let nameArray = _.getElement(`h1 .record-cell[data-type=fullname] .table-cell-wrapper 
+        let name = "", nameArray = [];
+        try{
+            nameArray = document.querySelector(`h1 .record-cell[data-type=fullname] .table-cell-wrapper 
                 .index span .record-cell[data-type=fullname] .ellipsis_inline`).innerText.split(" ");
-    
-        // remove any shenanigans
-        nameArray.forEach((name, i) => {
-            if(name.toLowerCase() === "see notes" || name.charAt(0) === `"`) nameArray.splice(i, 1);
-        });
-    
-        // consolidate multiple last names
-        if(nameArray.length > 2){
-            // create a string to store the output name(s)
-            let lastNames = "";
-            // add each last name to the lastNames string
-            for(let i = 1; i < nameArray.length; ++i){
-                if(i === 1) lastNames += `${nameArray[i]}`;
-                // don't forget spacing
-                if(i > 1) lastNames += ` ${nameArray[i]}`;
+            // remove any shenanigans
+            nameArray.forEach((name, i) => {
+                if(name.toLowerCase() === "see notes" || name.charAt(0) === `"`) nameArray.splice(i, 1);
+            });
+        
+            // consolidate multiple last names
+            if(nameArray.length > 2){
+                // create a string to store the output name(s)
+                let lastNames = "";
+                // add each last name to the lastNames string
+                for(let i = 1; i < nameArray.length; ++i){
+                    if(i === 1) lastNames += `${nameArray[i]}`;
+                    // don't forget spacing
+                    if(i > 1) lastNames += ` ${nameArray[i]}`;
+                }
+                // update nameArray to reflect changes
+                nameArray = [nameArray[0], lastNames];
             }
-            // update nameArray to reflect changes
-            nameArray = [nameArray[0], lastNames];
+            name = {
+                fullName: `${nameArray[0]} ${nameArray[1]}`,
+                firstName: `${nameArray[0]}`, 
+                lastName: `${nameArray[1]}`,
+                initials: `${nameArray[0].charAt(0) + nameArray[1].charAt(0)}`
+            }
+        } catch (error) {
+            console.warn(error);
+            name = {fullName:"", firstName:"", lastName:"", initials:""};
+        } finally {
+            return name;
         }
-    
-        // return name as object
-        return {
-            fullName: `${nameArray[0]} ${nameArray[1]}`,
-            firstName: `${nameArray[0]}`, 
-            lastName: `${nameArray[1]}`,
-            initials: `${nameArray[0].charAt(0) + nameArray[1].charAt(0)}`
-        };
+    }
+    getOccupation(){
+        let occupation = "";
+        try{
+            occupation = document.querySelector("[data-fieldname=occupation_c] .ellipsis_inline").dataset.originalTitle;
+        } catch (error) {
+            console.warn(error);
+            occupation = "";
+        } finally{
+            return occupation;
+        }
     }
     getPhone(){
-        let mobilePhone = _.getElement("[data-fieldname=phone_mobile] a");
-        let otherPhone = _.getElement("[data-fieldname=phone_other] a");
-        return {
-            mobile: mobilePhone === null ? "" : mobilePhone.innerText,
-            other: otherPhone === null ? "" : otherPhone.innerText
+        let phone = "";
+        try{
+            phone = document.querySelector("[data-fieldname=phone_mobile] a").innerText;
+        } catch (error) {
+            console.warn(error);
+            phone = "";
         }
+        return phone;
     }
 }
 class Progressbar extends Child {
@@ -359,7 +573,7 @@ class Progressbar extends Child {
         this.id = _.getRandomId();
         this.value = value;
     }
-    build(parent = queue){
+    build(parent = _.getQueue()){
         let container = new Child()
             .setId(this.id)
             .setAttribute(this.attributes)
@@ -436,14 +650,104 @@ class Progressbar extends Child {
         return this;
     }
 }
-
+class Radiolist extends Child{
+    constructor(label = "", options = [], trailingRadio = false){
+        super();
+        this.id = _.getRandomId();
+        this.classList = trailingRadio ? ["radiolist", "trailing-radio"] : ["radiolist"];
+        this.default = undefined;
+        this.label = label;
+        this.options = options;
+    }
+    build(parent = _.getQueue()){
+        let radiolist = new Child().setId(this.id)
+            .setClassList(this.classList).appendTo(parent);
+        // add a label
+        new Child().setClassList(["radiolist__label"])
+            .setInnerText(this.label).appendTo(radiolist);
+        // create a list item for each option
+        for(const option of this.options){
+            let radiolistItem = new Child().setClassList("radiolist__item").appendTo(radiolist);
+            // add a radio button
+            let input = new Child("input").setClassList(["item__input"])
+                .setAttribute({
+                    type: "radio", 
+                    name: `${this.label}`, 
+                    value: `${option}`
+                }).appendTo(radiolistItem);
+            // add a label
+            if(option === "other"){
+                let other = new Child("input").setClassList(["item__label"])
+                    .setAttribute({type: "text", placeholder: `${option}`})
+                    .appendTo(radiolistItem);
+                other.getNode().addEventListener("focus", function () {
+                    try{
+                        this.parentElement.querySelector("input").checked = true;
+                    } catch (error){
+                        console.error(error);
+                    }
+                });
+                other.getNode().addEventListener("blur", function () {
+                    try{
+                        this.parentElement.querySelector("input").value = this.value;
+                    } catch (error){
+                        console.error(error);
+                    }
+                });
+            } else {
+                new Child("label").setClassList(["item__label"])
+                    .setAttribute({for:`${input.id}`})
+                    .setInnerText(`${option}`).appendTo(radiolistItem);
+            }
+            // add a state indicator
+            new Child().setClassList(["item__state"]).appendTo(radiolistItem);
+        }
+        if(this.default != undefined) {
+            try{
+                this.getNode().querySelectorAll("input")[this.default].checked = true;
+            } catch (error){
+                console.warn(error);    
+            }
+        }
+        return this;
+    }
+    getSelection(fallback = ""){
+        let selection = "";
+        try{
+            this.getNode().querySelectorAll("input").forEach(option => {
+                if(option.checked) selection = option.value;
+            });
+        } catch (error) {
+            console.warn(error);
+            selection = fallback;
+        } finally {
+            return selection;
+        }
+    }
+    setDefault(index = 0){
+        this.default = index;
+        return this;
+    }
+}
 const _ = {
     dateTime: {
-        today: new Date(),
+        endOfToday: new Date(new Date().setHours(23,59,59)),
+        startOfToday: new Date(new Date().setHours(0,0,0)),
         presentYearStart: new Date(new Date().getFullYear(), 0, 1),
+        getDateString: (date = new Date(), abbreviated = false, leadingDay = true) => {
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+            let day = dayNames[date.getDay()], month = monthNames[date.getMonth()], dd = date.getDate().toString(), year = date.getFullYear().toString();
+                dd = dd.length < 2 ? `0${dd}` : dd; // format date
+            if(abbreviated && leadingDay) return `${day.substring(0,3)} ${month.substring(0,3)} ${dd}, ${year}`;
+            if(!(abbreviated) && leadingDay) return `${day} ${month} ${dd}, ${year}`;
+            if(abbreviated && !(leadingDay)) return `${month.substring(0,3)} ${dd}, ${year}`;
+            if(!(abbreviated) && !(leadingDay)) return `${month} ${dd}, ${year}`;
+        },
         getNumberString: (date = new Date(), model = "") => {
             // dates come in many forms, but only some are valid
             const validModels = [
+                'yyyy-mm-dd', 'yyyy-dd-mm', 'yy-dd-mm', 'yy-mm-dd',
                 'mm-dd-yyyy', 'dd-mm-yyyy', 'mm-dd-yy', 'dd-mm-yy',
                 'mm/dd/yyyy', 'dd/mm/yyyy', 'mm/dd/yy', 'dd/mm/yy',
                 'mmddyyyy', 'ddmmyyyy', 'mmddyy', 'ddmmyy'
@@ -492,32 +796,15 @@ const _ = {
         }
     },
     duplicateNode: (node) => {
-        let clone = node.cloneNode(true);
-        clone.id = _.getRandomId();
-        new Child().objectify(clone).getElements("*", []).forEach(child => {
-            child.id = _.getRandomId();
-        });
-        return clone;
-    },
-    error: {
-        log: (error, critical = false) => {
-            if(error instanceof Error === false) {
-                let errorConstruct = new Error();
-                if(_.type.is.object(error)){
-                    errorConstruct.name = Object.hasOwn(error, "name") ? error.name : "Error";
-                    errorConstruct.message = Object.hasOwn(error, "message") ? error.message : "Something went wrong."
-                } else {
-                    errorConstruct.message = _.type.string(error, "Something went wrong.");
-                }
-                error = errorConstruct;
-            }
-
-            if(critical) {
-                console.error(error.toString());
-            } else {
-                error.name = "Warning";
-                console.warn(error.toString());
-            }
+        try{
+            let clone = node.cloneNode(true);
+                clone.id = _.getRandomId();
+            clone.querySelectorAll("*").forEach(child => {
+                child.id = _.getRandomId();
+            });
+            return clone;
+        } catch (error) {
+            console.error(error);
         }
     },
     getDimensions: (node) => {
@@ -591,7 +878,7 @@ const _ = {
             try{ 
                 if(_.type.is.array(array)) return array;
                 else throw {name: "TypeError", message: "Parameter is not type of array."};
-            } catch (error) { _.error.log(error); return fallback;}
+            } catch (error) { console.warn(error); return fallback;}
         },
         is: {
             array: (thing) => {
@@ -611,33 +898,56 @@ const _ = {
                 else return false;
             }
         },
+        isNot: {
+            array: (thing) => {
+                if(Array.isArray(thing)) return false;
+                else return true;
+            },
+            number: (thing) => {
+                if(typeof thing === "number") return false;
+                else return true;
+            },
+            object: (thing) => {
+                if(typeof thing === "object" && !Array.isArray(thing)) return false;
+                else return true;
+            },
+            string: (thing) => {
+                if(typeof thing === "string") return false;
+                else return true;
+            }
+        },
         number: (number, fallback = 0) => {
             try{ 
                 if(_.type.is.number(number)) return number;
                 else throw {name: "TypeError", message: "Parameter is not type of number."};
-            } catch (error) { _.error.log(error); return fallback; }
+            } catch (error) { console.warn(error); return fallback; }
         },
         object: (object, fallback = {}) => {
             try{ 
                 if(_.type.is.object(object)) return object;
                 else throw {name: "TypeError", message: "Parameter is not type of object."};
-            } catch (error) { _.error.log(error); return fallback; }
+            } catch (error) { console.warn(error); return fallback; }
         },
         string: (string, fallback = "") => {
             try{ 
                 if(_.type.is.string(string)) return string;
                 else throw {name: "TypeError", message: "Parameter is not type of string."};
-            } catch (error) { _.error.log(error); return fallback; }
+            } catch (error) { console.warn(error); return fallback; }
         }
+    },
+    getQueue: () => {
+        let queue = _.getElement("#extension-queue", null);
+        if(queue === null) queue = new Child().setId("extension-queue")
+            .appendTo(document.body).getNode();
+        return queue;
     }
 }
-
 const animation = {
     duration: { short: 200, medium: 600, long: 1000 },
     easing: {
-    standard: "cubic-bezier(0.2, 0.0, 0, 1.0)",
-    accelerate: "cubic-bezier(0, 0, 0, 1)",
-    decelerate: "cubic-bezier(0.3, 0, 1, 1)"
+        standard: "cubic-bezier(0.2, 0.0, 0, 1.0)",
+        accelerate: "cubic-bezier(0, 0, 0, 1)",
+        decelerate: "cubic-bezier(0.3, 0, 1, 1)"
     },
     fade: async (node, fadeIn = false) => {
         let a;
@@ -690,7 +1000,7 @@ const animation = {
                 ];
                 break;
             default:
-                _.error.log(`"${from}" is an invalid parameter value.`);
+                console.warn(`"${from}" is an invalid parameter value.`);
                 return node;
         }
         let a = node.animate(keyframes,
@@ -702,7 +1012,6 @@ const animation = {
         else node.remove(0);
     }
 }
-
 const axis = {
     getClinicDetails: async (clinicName = "") => {
         try{
@@ -727,7 +1036,7 @@ const axis = {
             if(firstResponse.ok) {
                 let clinic = await firstResponse.json();
                 clinicId = clinic.records[0].id;
-                if(clinic.records.length > 1) _.error.log(`Expected 1 results, but received ${clinic.records.length} results.`);
+                if(clinic.records.length > 1) console.warn(`Expected 1 result, but received ${clinic.records.length} results.`);
             } else { throw `${secondResponse.status} ${secondResponse.statusText}`; }
     
             // second request to get detailed information for clinic
@@ -736,18 +1045,17 @@ const axis = {
             // process second request and return detailed clinic information
             if(secondResponse.ok) return await secondResponse.json(); 
             else throw `${secondResponse.status} ${secondResponse.statusText}`;
-        } catch (error) { _.error.log(error, true); return {}; }
+        } catch (error) { console.error(error); return {}; }
     },
-    getDetailedVisits: async (startDate = _.dateTime.presentYearStart, endDate = _.dateTime.today) => {
+    getDetailedVisits: async (startDate = _.dateTime.presentYearStart, endDate = _.dateTime.endOfToday) => {
         try{
-            const client = new Client();
             const patient = new Patient();
             // the visits api calls a certain number of visits, starting with the most recent visit
             // set the max_num query equal to the difference between present and startDate
-            let maxNum = Math.ceil((_.dateTime.today.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
+            let maxNum = Math.ceil((_.dateTime.endOfToday.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
     
             // request a quantity of visit records less than or equal to the set maxNum
-            let response = await fetch(new Request(`https://axis.thejoint.com/rest/v11_20/Contacts/${ patient.id }/link/contacts_tj_visits_1?erased_fields=true&max_num=${maxNum}`), { headers: {"Oauth-Token": client.oauth} });
+            let response = await fetch(new Request(`https://axis.thejoint.com/rest/v11_20/Contacts/${ patient.id }/link/contacts_tj_visits_1?erased_fields=true&max_num=${maxNum}`), { headers: {"Oauth-Token": new Client().oauth} });
             let visits = await response.json();
     
             // the response will include include visits outside the set date range
@@ -780,78 +1088,147 @@ const axis = {
                     procedure: "",
                     visitCost: match.visit_price
                 }
-    
-                // to determine the correct procedure code, count how many regions were manipulated
-                // create an array of keys corresponding to adjusted segments
-                let segmentList = ["spinal_c0_c", "spinal_c1", "spinal_c2", "spinal_c3", "spinal_c4", "spinal_c5", "spinal_c6", "spinal_c7", "t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8", "t9", "t10", "t11", "t12", "l1", "l2", "l3", "l4", "l5", "rpelvis", "lpelvis", "rsacrum", "lsacrum", "shoulderr", "shoulderl", "elbowr", "elbowl", "wristr", "wristl", "hipr", "hipl", "kneer", "kneel", "ankler", "anklel"];
-                // create an iteration counter and a place to store manipulated regions
-                let i = 0, spinalRegions = [], extremityRegions = [];
-                // for each possible segment, check to see if has been manipulated
-                for(const segment of segmentList){
-                    if(String(match[segment]).length != 0 && i <= 40){
-                        // determine the region that the joint is of and push the region to the manipulatedRegions array
-                        if(i === 0) { spinalRegions.push("head"); }
-                        if(i > 0 && i <= 7) { spinalRegions.push("cervical"); i = 7; }
-                        if(i > 7 && i <= 19) { spinalRegions.push("thoracic"); i = 19; }
-                        if(i > 19 && i <= 24) { spinalRegions.push("lumbar"); i = 24; }
-                        if(i > 24 && i <= 26) { spinalRegions.push("pelvis"); i = 26; }
-                        if(i > 26 && i <= 28){ spinalRegions.push("sacrum"); i = 28;}
-                        if(i > 28 && i <= 34) { extremityRegions.push("upper extremity"); i = 34; }
-                        if(i > 34) { extremityRegions.push("lower extremity"); i = 40; }
-                    }
-                    // increment the counter
-                    ++i;
+                // create an array of keys corresponding to regions and segments
+                const regions = {
+                    head:["spinal_c0_c"],
+                    cervical:["spinal_c1", "spinal_c2", "spinal_c3", "spinal_c4", "spinal_c5", "spinal_c6", "spinal_c7"],
+                    thoracic:["t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8", "t9", "t10", "t11", "t12"],
+                    lumbar:["l1", "l2", "l3", "l4", "l5"],
+                    sacral:["sacrumr", "lsacrum"],
+                    pelvic:["rpelvis", "lpelvis"],
+                    lowerExtremity:["hipr", "hipl", "kneer", "kneel", "ankler", "anklel"],
+                    upperExtremity:["shoulderr", "shoulderl", "elbowr", "elbowl", "wristr", "wristl"],
+                    ribs:["ribr", "ribsl"]
                 }
-                // 98940 is used if two or fewer spinal regions were manipulated
-                if(spinalRegions.length < 3) visitObject.procedure = "98940 CHIROPRACTIC MANIPULATIVE TREATMENT, SPINAL (1-2 REGIONS)";
-                // 98941 is used if two or more spinal regions were manipulated
-                if(spinalRegions.length > 2 ) visitObject.procedure = "98941 CHIROPRACTIC MANIPULATIVE TREATMENT, SPINAL (3-4 REGIONS)";
-                // 98942 is used if five or more spinal regions were manipulated
-                if(spinalRegions.length > 5 ) visitObject.procedure = "98942 CHIROPRACTIC MANIPULATIVE TREATMENT, SPINAL (5+ REGIONS)";
-                // 98943 is used if no spinal regions were manipulated and any extremities were
-                if(spinalRegions.length === 0 && extremityRegions > 0) visitObject.procedure = "98943 CHIROPRACTIC MANIPULATIVE TREATMENT, EXTRASPINAL";
-    
-                // to determine the correct diagnoses, count how many regions include a subluxation
-                // reset the counter
-                i = 0;
-                // update the segmentList to be consistent with axis naming conventions for subluxation levels
-                segmentList = ["sub_c0_c", "sub_c1", "sub_c2", "sub_c3", "sub_c4", "sub_c5", "sub_c6", "sub_c7", "sub_t1", "sub_t2", "sub_t3", "sub_t4", "sub_t5", "sub_t6", "sub_t7", "sub_t8", "sub_t9", "sub_t10", "sub_t11", "sub_t12", "sub_l1", "sub_l2", "sub_l3", "sub_l4", "sub_l5", "sub_sacrum", "sub_pelvis-c"];
-                // check each segment for subluxation 
-                for(const segment of segmentList){
-                    if(String(match[segment]) === "1" && i < 36){
-                        // determine the region that the joint is of and push the region to the manipulatedRegions array
-                        if(i === 0) { visitObject.diagnosis.push("M99.00 SEGMENTAL AND SOMATIC DYSFUNCTION OF HEAD REGION"); }
-                        if(i > 0 && i <= 7) { visitObject.diagnosis.push("M99.01 SEGMENTAL AND SOMATIC DYSFUNCTION OF CERVICAL REGION"); i = 7; }
-                        if(i > 7 && i <= 19) { visitObject.diagnosis.push("M99.02 SEGMENTAL AND SOMATIC DYSFUNCTION OF THORACIC REGION"); i = 19; }
-                        if(i > 19 && i <= 24) { visitObject.diagnosis.push("M99.03 SEGMENTAL AND SOMATIC DYSFUNCTION OF LUMBAR REGION"); i = 24; }
-                        if(i === 25) { visitObject.diagnosis.push("M99.04 SEGMENTAL AND SOMATIC DYSFUNCTION OF SACRAL REGION"); }
-                        if(i === 26) { visitObject.diagnosis.push("M99.05 SEGMENTAL AND SOMATIC DYSFUNCTION OF PELVIC REGION"); }
+                // create variables to store treated regions
+                let spinalRegions = 0, extremityRegions = 0;
+                // for each region
+                for(const [region, segments] of Object.entries(regions)){
+                    // check if a segment was adjusted
+                    for(let i = 0; i < segments.length; ++i){
+                        // if adjusted, update the diagnosis and procedure
+                        if(String(match[segments[i]]).length != 0){
+                            switch(region){
+                                case "head":
+                                    visitObject.diagnosis.push(`M99.00 SEGMENTAL AND SOMATIC DYSFUNCTION OF ${region.toUpperCase()} REGION`);
+                                    extremityRegions += 1; i = segments.length; // exit inner loop
+                                    break;
+                                case "cervical":
+                                    visitObject.diagnosis.push(`M99.01 SEGMENTAL AND SOMATIC DYSFUNCTION OF ${region.toUpperCase()} REGION`);
+                                    spinalRegions += 1; i = segments.length; // exit inner loop
+                                    break;
+                                case "thoracic":
+                                    visitObject.diagnosis.push(`M99.02 SEGMENTAL AND SOMATIC DYSFUNCTION OF ${region.toUpperCase()} REGION`);
+                                    spinalRegions += 1; i = segments.length; // exit inner loop
+                                    break;
+                                case "lumbar":
+                                    visitObject.diagnosis.push(`M99.03 SEGMENTAL AND SOMATIC DYSFUNCTION OF ${region.toUpperCase()} REGION`);
+                                    spinalRegions += 1; i = segments.length; // exit inner loop
+                                    break;
+                                case "sacral":
+                                    visitObject.diagnosis.push(`M99.04 SEGMENTAL AND SOMATIC DYSFUNCTION OF ${region.toUpperCase()} REGION`);
+                                    spinalRegions += 1; i = segments.length; // exit inner loop
+                                    break;
+                                case "pelvic":
+                                    visitObject.diagnosis.push(`M99.05 SEGMENTAL AND SOMATIC DYSFUNCTION OF ${region.toUpperCase()} REGION`);
+                                    spinalRegions += 1; i = segments.length; // exit inner loop
+                                    break;
+                                case "lowerExtremity":
+                                    visitObject.diagnosis.push(`M99.06 SEGMENTAL AND SOMATIC DYSFUNCTION OF LOWER EXTREMITY`);
+                                    extremityRegions += 1; i = segments.length; // exit inner loop
+                                    break;
+                                case "upperExtremity":
+                                    visitObject.diagnosis.push(`M99.07 SEGMENTAL AND SOMATIC DYSFUNCTION OF UPPER EXTREMITY`);
+                                    extremityRegions += 1; i = segments.length; // exit inner loop
+                                    break;
+                                case "ribs":
+                                    visitObject.diagnosis.push(`M99.08 SEGMENTAL AND SOMATIC DYSFUNCTION OF RIB CAGE`);
+                                    extremityRegions += 1; i = segments.length; // exit inner loop
+                                    break;
+                            }
+                        }
                     }
-                    // increment the counter
-                    ++i;
+                }
+                const cmt = "CHIROPRACTIC MANIPULATIVE TREATMENT";
+                switch(spinalRegions){
+                    case 0:
+                        if(extremityRegions) detailedVisits.procedure = `98943 ${cmt} (EXTRA-SPINAL)`;
+                        else visitObject.procedure = "";
+                        break;
+                    case 1:
+                    case 2:
+                        visitObject.procedure = `98940 ${cmt} (1-2 REGIONS)`;
+                        break;
+                    case 3:
+                    case 4:
+                        visitObject.procedure = `98941 ${cmt} (3-4 REGIONS)`;
+                        break
+                    case 5:
+                        visitObject.procedure = `98942 ${cmt} (5+ REGIONS)`;
+                        break;
                 }
                 detailedVisits.push(visitObject);
             }
             // return detailed visit information
             return detailedVisits;
     
-        } catch (error){ _.error.log(error, true); return []; }
+        } catch (error){ console.error(error); return []; }
     },
-    getSuperbillBody: async (startDate = _.dateTime.presentYearStart, endDate = _.dateTime.today) => {
+    getExcuseBody: async (date = _.dateTime.startOfToday, modifications = [], returnToPlay = "immediately") => {
 
-        // access the current client and patient objects
-        let client = new Client(), patient = new Patient();
+        if(_.type.isNot.array(modifications)) modifications = [];
+
+        const patient = new Patient();
+        let visit, treatingPhysician = "";
+        try{
+            visit = await axis.getVisits(date);
+            if(_.type.is.object(visit[0])){
+                treatingPhysician = `Dr. ${visit[0].users_tj_visits_2_name}`;
+            } else {/* Cannot validate visit. */ throw new Error(`Expected type of object but received ${typeof visit[0]} instead.`, true); }
+        } catch(error){ console.error(error); treatingPhysician = ""; }
+
+        let excuseBody = [];
+
+        excuseBody.push(new Child().setClassList(["date"]).setInnerText(`${_.dateTime.getDateString()}`).appendTo());
+        excuseBody.push(new Child().setClassList(["subject"])
+            .setInnerText(`RE: ${patient.name.fullName} (DOB ${_.dateTime.getNumberString(patient.dob)})`).appendTo());
+        excuseBody.push(new Child().setClassList(["greeting"]).setInnerText(`To whom it may concern,`).appendTo());
+
+        let bodyText = new Child().setClassList(["body"]).appendTo();
+
+        excuseBody.push(bodyText);
+        excuseBody.push(new Child().setClassList(["paragraph"])
+            .setInnerText(`Please excuse ${patient.name.fullName}'s absence. They presented to my clinic on ${_.dateTime.getNumberString(date)} for ${ modifications.length ? "musculoskeletal evaluation and management" : "chiropractic manipulative treatment" }. ${ modifications.length ? `Based on my clinical findings, I have concluded that this patient requires the following activity modification${modifications.length > 1 ? "s:" : ":"}` : `It is my opinion that this patient may resume normal activities ${returnToPlay}. Should you have any questions or concerns, please do not hesitate to contact my office.` }`).appendTo(bodyText));
+        if(modifications.length) {
+            let container = new Child().setClassList(["excuse__list"]).appendTo(bodyText);
+            container.getNode().append(ui.build.list(modifications));
+            excuseBody.push(container);
+            excuseBody.push(new Child().setClassList(["paragraph"])
+                .setInnerText(`I expect that this patient will be able resume normal activities ${returnToPlay}${returnToPlay === "immediately" || returnToPlay === "tomorrow" ? ". Should you have any questions or concerns, please do not hesitate to contact my office." : ", pending reassessment of their condition at that time. Should you have any questions or concerns, please do not hesitate to contact my office."}`).appendTo(bodyText));
+        }
+        excuseBody.push(new Child().setClassList(["closing"]).setInnerText(`Thank you,`).appendTo());
+        excuseBody.push(new Child().setClassList(["signature"]).setInnerText(treatingPhysician).appendTo());
+        if(treatingPhysician != "" /* visit was validated */){
+            excuseBody.push(new Child().setClassList(["esignature"]).setInnerText(`Electronically signed on ${new Date()}.`).appendTo());
+        }
+
+        return excuseBody;
+    },
+    getSuperbillBody: async (startDate = _.dateTime.presentYearStart, endDate = _.dateTime.endOfToday) => {
+
+        // access patient object
+        const patient = new Patient();
 
         // validate startDate and endDate
         if(startDate instanceof Date === false) startDate = _.dateTime.presentYearStart;
-        if(endDate instanceof Date === false) endDate = _.dateTime.today;
+        if(endDate instanceof Date === false) endDate = _.dateTime.endOfToday;
     
         // get all transactions and visits between startDate and endDate
         let transactions, visits;
         try{
             transactions = await axis.getTransactions(startDate, endDate);
             visits = await axis.getVisits(startDate, endDate);
-        } catch (error) { _.error.log(error, true); return []; }
+        } catch (error) { console.error(error); return []; }
     
         // the statement body includes three lists: meta info, patient info, and an account summary
 
@@ -877,16 +1254,16 @@ const axis = {
                     {label: "Name", value: `${patient.name.fullName}`},
                     {label: "Date of Birth", value: `${_.dateTime.getNumberString(patient.dob)} (age ${patient.age})`},
                     {label: "Address", value: `${patient.address.primary.street} ${patient.address.primary.city}, ${patient.address.primary.state} ${patient.address.primary.zip}`},
-                    {label: "Phone", value: `${patient.phone.mobile}`},
+                    {label: "Phone", value: `${patient.phone}`},
                     {label: "Email", value: `${patient.email}`}
                 ]
             },
             {   
                 content: [
-                    {label: "Issue Date", value: _.dateTime.getNumberString(_.dateTime.today)},
+                    {label: "Issue Date", value: _.dateTime.getNumberString(_.dateTime.startOfToday)},
                     {label: "Period", value: `${_.dateTime.getNumberString(startDate)} - ${_.dateTime.getNumberString(endDate)}`},
                     {label: "Reference Number", value: `${patient.name.initials}${_.dateTime.getNumberString(patient.dob,"mmddyyyy")}`},
-                    {label: "Prepared By", value: `${client.getCurrentUser(true)}`}
+                    {label: "Prepared By", value: `${new Client().getCurrentUser(true)}`}
                 ]
             },
             {
@@ -986,7 +1363,7 @@ const axis = {
     
         return body;
     },
-    getTransactions: async (startDate = _.dateTime.presentYearStart, endDate = _.dateTime.today) => {
+    getTransactions: async (startDate = _.dateTime.presentYearStart, endDate = _.dateTime.endOfToday) => {
         try{
             // check that the input values are *probably* valid
             // ? what could go wrong
@@ -1018,18 +1395,20 @@ const axis = {
                 return obj.records;
             }
             else { throw `status: ${response.status}`; }
-        } catch (error){ _.error.log(error, true); return {}; }
+        } catch (error){ console.error(error); return {}; }
     }, 
-    getVisits: async (startDate = _.dateTime.presentYearStart, endDate = _.dateTime.today) => {
+    getVisits: async (startDate = _.dateTime.presentYearStart, endDate = _.dateTime.endOfToday) => {
         try{
-            const client = new Client();
             const patient = new Patient();
+            endDate = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59, 999);
+            console.log(startDate, endDate);
             // the visits api calls a certain number of visits, starting with the most recent visit
             // set the max_num query equal to the difference between present and startDate
-            let maxNum = Math.ceil((_.dateTime.today.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
-    
+            let maxNum = Math.ceil((_.dateTime.endOfToday.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
+            // max_num cannot be zero
+            if(maxNum === 0) maxNum = 1;
             // request a quantity of visit records less than or equal to the set maxNum
-            let response = await fetch(new Request(`https://axis.thejoint.com/rest/v11_20/Contacts/${ patient.id }/link/contacts_tj_visits_1?erased_fields=true&view=subpanel-for-contacts-contacts_tj_visits_1&fields=date_entered%2Cstatus%2Chas_carecard%2Cmy_favorite&max_num=${maxNum}&order_by=date_entered%3Adesc&filter%5B0%5D%5Bstatus%5D=Completed`), { headers: {"Oauth-Token": client.oauth} });
+            let response = await fetch(new Request(`https://axis.thejoint.com/rest/v11_20/Contacts/${ patient.id }/link/contacts_tj_visits_1?erased_fields=true&view=subpanel-for-contacts-contacts_tj_visits_1&fields=date_entered%2Cstatus%2Chas_carecard%2Cmy_favorite&max_num=${maxNum}&order_by=date_entered%3Adesc&filter%5B0%5D%5Bstatus%5D=Completed`), { headers: {"Oauth-Token": new Client().oauth} });
             let visits = await response.json();
     
             // the response will include include visits outside the set date range
@@ -1056,7 +1435,7 @@ const axis = {
                         if(i > maxNum) throw new Error(`visitArray exceeded expected length.`);
                         else ++i;
                         // get detailed records for the visit with the current visit id
-                        let res = await fetch(new Request(`https://axis.thejoint.com/rest/v11_20/TJ_Visits/${id}?erased_fields=true&view=record&fields=date_entered%2Cstatus%2Chas_carecard&viewed=1`), { headers: {"Oauth-Token": client.oauth} });
+                        let res = await fetch(new Request(`https://axis.thejoint.com/rest/v11_20/TJ_Visits/${id}?erased_fields=true&view=record&fields=date_entered%2Cstatus%2Chas_carecard&viewed=1`), { headers: {"Oauth-Token": new Client().oauth} });
                         // store visit details of the records array
                         records.push(await res.json());
                     }
@@ -1082,10 +1461,9 @@ const axis = {
             // return an array of all visit records between startDate and endDate
             return records;
     
-        } catch (error){ _.error.log(error, true); return error; }
+        } catch (error){ console.error(error); return error; }
     }
 }
-
 const ui = {
     build: {
         dialog: async (body = []) => {
@@ -1131,8 +1509,7 @@ const ui = {
                 // otherwise, it should be a "span"
                 else element[key] = "span";
             }
-    
-            // for each content object
+                // for each content object
             for(const obj of content){
                 // create a list item
                 let li = new Child("li").appendTo(ul).getNode();
@@ -1279,7 +1656,7 @@ const ui = {
             let table = new Child("table").appendTo();
     
             // if there is no content, just return the table
-            if(!content.length) return table;
+            if(!content.length) return table.getNode();
     
             // a filter can be specified to only output specified key values
             // if the filter is an empty array or falsy, this filter should default to all keys on the first object
@@ -1362,33 +1739,13 @@ const ui = {
         const dialog = ui.getDialog(), sheet = ui.getSheet();
         if(dialog != null) animation.fade(dialog, false);
         if(sheet != null) animation.slide(sheet, "right", false);
-        ui.empty(queue);
+        ui.empty(_.getQueue());
     }
 }
-
 // typeface access
 const robotoFlex = chrome.runtime.getURL("fonts/RobotoFlex.ttf");
 const materialSymbols = chrome.runtime.getURL("fonts/MaterialSymbols.woff2");
-new Child("style").setInnerText(`@font-face{font-family: "Roboto Flex"; src: url(${robotoFlex});}@font-face{font-family:"Material Symbols"; src: url(${materialSymbols});}`).appendTo(document.head)
-
-// create a queue for extension children
-const queue = new Child().setId("extension-queue").appendTo(document.body).getNode();
-
-// listen for install/update
-// chrome.runtime.onInstalled.addListener(function(e){
-//     switch(e.reason){
-//         case chrome.runtime.OnInstalledReason.INSTALL:
-//             // display terms of service
-//             // chrome.runtime.setUninstallURL();
-//             break;
-//         case chrome.runtime.OnInstalledReason.UPDATE:
-//             // do something
-//             break;
-//         default:
-//             break;
-//     }
-// });
-
+new Child("style").setInnerText(`@font-face{font-family: "Roboto Flex"; src: url(${robotoFlex});}@font-face{font-family:"Material Symbols"; src: url(${materialSymbols});}`).appendTo(document.head);
 // listen for user to click the action button
 chrome.runtime.onMessage.addListener(function(message, sender, response){
     // access the source of the message
@@ -1396,60 +1753,116 @@ chrome.runtime.onMessage.addListener(function(message, sender, response){
         if(ui.isActive()){
             ui.reset();
         } else {
-            switch(new Client().getCurrentResource()){
-                case "tjc_backoffice":
-                    break;
-                case "contacts":
-                    // create the superbill generator
-                    let superbillTool = new Child("div").setClassList().appendTo();
+            if(new Client().isFrontOffice()){
+                switch(new Client().getFrontOfficeResource()){
+                    case "contacts":
+                        // * create the superbill generator
+                        let superbillTool = new Child().setClassList().appendTo();
+    
+                        // create a date range selector
+                        let superbillDateRange = new Child().setClassList(["flex-row"])
+                            .appendTo(superbillTool).getNode();
+                        let startDateTextfield = new Textfield("Start Date")
+                            .setValue(`${new Date().getFullYear()}-01-01`)
+                            .setType("date").build(superbillDateRange);
+                        let endDateTextfield = new Textfield("End Date")
+                            .setValue(`${_.dateTime.getNumberString(new Date(), "yyyy-mm-dd")}`)
+                            .setType("date").build(superbillDateRange);
+    
+                        // add a button to trigger superbill generation
+                        new Button("Print Superbill")
+                            .setClassList(["surface-button", "width--full"])
+                            .build(superbillTool)
+                            .getNode().addEventListener("click", async function (e){
+                                e.preventDefault();
+                                // remove the dialog
+                                animation.fade(ui.getDialog(), false);
+                                // build a sheet for the superbill
+                                let sheet = ui.build.sheet().getNode();
+                                // show progress indicator
+                                let progressbar = new Progressbar().build(sheet)
+                                    progressbar.setProgress(0);
+                                // get the superbill body content
+                                let bodyContent = await axis.getSuperbillBody(startDateTextfield.getValue(), endDateTextfield.getValue());
+                                // create a page to contain the superbill body
+                                let page = await ui.build.page("Superbill", ["tjc-document"]);
+                                // update the progressbar to show complete
+                                await progressbar.complete();
+                                // put the page in a preview
+                                let preview = ui.build.preview(page, bodyContent, ["superbill"]);
+                                // append the preview to the sheet
+                                sheet.append(preview);
+                            });
 
-                    // create a date range selector
-                    let superbillDateRange = new Child("div").setClassList(["flex-row"])
-                        .appendTo(superbillTool).getNode();
-                    let startDateTextfield = new Textfield("Start Date")
-                        .setType("date").build(superbillDateRange);
-                    let endDateTextfield = new Textfield("End Date")
-                        .setType("date").build(superbillDateRange);
+                        // * create the excuse slip generator
 
-                    // add a button to trigger superbill generation
-                    new Button("Print Superbill")
-                        .setClassList(["surface-button", "width--full"])
-                        .build(superbillTool)
-                        .getNode().addEventListener("click", async function (e){
-                            e.preventDefault();
-                            // remove the dialog
-                            animation.fade(ui.getDialog(), false);
+                        const patient = new Patient();
+    
+                        let excuseTool = new Child("div").setClassList().appendTo();
+                        let excuseDate = new Textfield("Visit Date")
+                            .setValue(`${_.dateTime.getNumberString(new Date(), 'yyyy-mm-dd')}`)
+                            .setType("date").build(excuseTool);
+                        let excuseType = new Radiolist("This is a...", [
+                            "work excuse", 
+                            "school excuse"
+                        ]).setDefault(patient.age < 18 ? 1 : 0).build(excuseTool);
+                        let modifications = new Checklist("This patient should...", [
+                            "limit sitting for periods longer than 60 minutes",
+                            "limit standing for periods longer than 60 minutes",
+                            "limit lifting greater than 15 pounds",
+                            "other"
+                        ]).build(excuseTool);
+                        let returnToPlay = new Radiolist("Resume activities...", [
+                            "immediately",
+                            "in three days",
+                            "other"
+                        ]).setDefault(0).build(excuseTool);
+                        new Button("Print Excuse Letter")
+                            .setClassList(["surface-button", "width--full"])
+                            .build(excuseTool)
+                            .getNode().addEventListener("click", async function (e){
+                                e.preventDefault();
+                                // grab user inputs
+                                excuseDate = excuseDate.getValue();
+                                excuseType = excuseType.getSelection();
+                                modifications = modifications.getSelections();
+                                returnToPlay = returnToPlay.getSelection();
 
-                            // build a sheet for the superbill
-                            let sheet = ui.build.sheet().getNode();
-
-                            // show progress indicator
-                            let progressbar = new Progressbar().build(sheet)
-                                progressbar.setProgress(0);
-
-                            // get the superbill body content
-                            let bodyContent = await axis.getSuperbillBody(startDateTextfield.getValue(), endDateTextfield.getValue());
-                            // create a page to contain the superbill body
-                            let page = await ui.build.page("Superbill", ["tjc-document"]);
-
-                            // update the progressbar to show complete
-                            await progressbar.complete();
-
-                            // put the page in a preview
-                            let preview = ui.build.preview(page, bodyContent, ["superbill"]);
-
-                            // append the preview to the sheet
-                            sheet.append(preview);
-                        });
-
-                    // TODO: add other features
-
-                    // build dialog containing features
-                    ui.build.dialog([superbillTool]);
-                    break;
-                case "home":
-                default:
-                    break;
+                                // remove the dialog
+                                animation.fade(ui.getDialog(), false);
+                                // build a sheet for the release
+                                let sheet = ui.build.sheet().getNode();
+                                // show progress indicator
+                                let progressbar = new Progressbar().build(sheet)
+                                    progressbar.setProgress(0);
+                                // format the modification list for listification
+                                let objList = [], i = 1;
+                                for(const modification of modifications){
+                                    objList.push({value: `(${i++}) ${modification}`});
+                                }
+                                // get the excuse body content
+                                let bodyContent = await axis.getExcuseBody(excuseDate, objList, returnToPlay);
+                                // create a page to contain the release
+                                const patient = new Patient();
+                                let page = await ui.build.page(excuseType, ["tjc-document"]);
+                                // update the progressbar to show complete
+                                await progressbar.complete();
+                                // put the page in a preview
+                                let preview = ui.build.preview(page, bodyContent, ["excuse"]);
+                                // append the preview to the sheet
+                                sheet.append(preview);
+                            });
+    
+                        // build dialog containing features
+                        ui.build.dialog([superbillTool, excuseTool]);
+                        break;
+                    case "home":
+                    default:
+                        break;
+                }
+            }
+            if(new Client().isBackOffice()){
+                
             }
         }
     }

@@ -1,37 +1,60 @@
-/* color */
+/* color palette */
 
 .extension-variables {
   --hue: 183;
+  /* surface */
   --surface-color: hsl(var(--hue) 0% 100%);
   --surface-container: hsl(var(--hue) 25% 90%);
   --surface-container--low: hsl(var(--hue) 35% 95%);
   --surface-container--high: hsl(var(--hue) 20% 90%);
   --on-surface: hsl(var(--hue) 10% 10%);
   --on-surface--alt: hsl(var(--hue) 10% 25%);
+  /* primary color */
   --primary-color: hsl(var(--hue) 50% 25%);
   --primary-container: hsl(var(--hue) 80% 80%);
   --on-primary: hsl(var(--hue) 0% 100%);
   --on-primary-container: hsl(var(--hue) 50% 20%);
+  /* state color */
   --success-color: hsl(120 50% 25%);
   --error-color: hsl(0 50% 25%);
   --state-hover: hsl(var(--hue) 0% 0%);
   --state-focus: var(--primary-color);
 }
 
+/* non-color variables */
 .extension-variables {
   --typeface: "Roboto Flex";
-  --transition-on-hover: 250ms;
-  --transition-on-hide: 500ms;
+  /* animation duration */
+  --duration--short: 200ms;
+  --duration--medium: 500ms;
+  --duration--long: 1000ms;
+  /* animation easing */
+  --easing--standard: "cubic-bezier(0.2, 0.0, 0, 1.0)";
+  --easing--accelerate: "cubic-bezier(0, 0, 0, 1)";
+  --easing--decelerate: "cubic-bezier(0.3, 0, 1, 1)";
+  /* border radii */
   --surface-corner: 1rem;
+  --input-corner: 0.25rem;
+  /* elevation shadows */
   --surface-shadow: 0px 1px 2px 0px hsl(0 0 0 / 0.2);
 }
+
+/* available on all surfaces:
+  - typography
+  - reset default
+  - block classes
+  - button
+  - checklist
+  - textfield
+  - progressbar
+*/
 
 .extension-surface {
   /* surface styles */
   background-color: var(--surface-color);
   color: var(--on-surface);
 
-  /* default typography */
+  /* typography */
   font-family: var(--typeface);
   font-size: 0.875rem;
   font-weight: 400;
@@ -41,12 +64,134 @@
   letter-spacing: normal;
   line-height: 1.25rem;
 
-  /* reset sugarcrm defaults */
+  .typescale--display {
+    font-family: var(--typeface);
+    font-size: 2.8rem;
+    font-weight: 400;
+    text-shadow: none;
+    text-transform: none;
+    text-decoration: none;
+    letter-spacing: normal;
+    line-height: 3.25rem;
+  }
+  .typescale--headline {
+    font-family: var(--typeface);
+    font-size: 1.75rem;
+    font-weight: 400;
+    text-shadow: none;
+    text-transform: none;
+    text-decoration: none;
+    letter-spacing: normal;
+    line-height: 2.25rem;
+  }
+  .typescale--title {
+    font-family: var(--typeface);
+    font-size: 1rem;
+    font-weight: 500;
+    text-shadow: none;
+    text-transform: none;
+    text-decoration: none;
+    letter-spacing: normal;
+    line-height: 1.5rem;
+  }
+  .typescale--body {
+    font-family: var(--typeface);
+    font-size: 0.875rem;
+    font-weight: 400;
+    text-shadow: none;
+    text-transform: none;
+    text-decoration: none;
+    letter-spacing: normal;
+    line-height: 1.25rem;
+  }
+  .typescale--label {
+    font-family: var(--typeface);
+    font-size: 0.75rem;
+    font-weight: 400;
+    text-shadow: none;
+    text-transform: none;
+    text-decoration: none;
+    letter-spacing: normal;
+    line-height: 1rem;
+  }
+  .material-symbols {
+    font-family: "Material Symbols";
+    font-weight: normal;
+    font-style: normal;
+    font-size: 1.5rem; /* Preferred icon size */
+    display: inline-block;
+    line-height: 1;
+    text-transform: none;
+    letter-spacing: normal;
+    word-wrap: normal;
+    white-space: nowrap;
+    direction: ltr;
+  }
+  .modal-label {
+    position: absolute;
+    inset: 0.75rem auto auto 1rem;
+    font-family: var(--typeface);
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-shadow: none;
+    text-transform: none;
+    text-decoration: none;
+    letter-spacing: normal;
+    line-height: 1rem;
+  }
+
+  /* reset defaults */
   div {
     background-color: inherit;
   }
+  *,
+  *::before,
+  *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  img,
+  svg,
+  video {
+    display: block;
+    object-fit: cover;
+    object-position: center;
+    max-width: 100%;
+  }
+  details {
+    position: relative;
+  }
+  details summary {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    padding-right: 1.25rem;
+  }
+  details summary::after {
+    display: inline-block !important;
+    font-family: "Material Symbols" !important;
+    font-size: 1rem;
+    font-variation-settings: "wght" 400;
+    font-style: normal !important;
+    font-stretch: normal !important;
+    font-optical-sizing: auto !important;
+    text-decoration: none !important;
+    text-transform: none !important;
+    text-shadow: none;
+    letter-spacing: 0;
+    line-height: 1;
+    content: "keyboard_arrow_down";
+    position: absolute;
+    inset: 50% 0 auto auto;
+    translate: 0 -50%;
+    padding: 0 0.25em;
+  }
+  details[open] summary::after {
+    transform: rotate(180deg);
+  }
 
-  /* common block classes */
+  /* block classes */
 
   .flex-row {
     display: flex;
@@ -62,90 +207,7 @@
     width: 100%;
   }
 
-  /* typography */
-  & .typescale--display {
-    font-family: var(--typeface);
-    font-size: 2.8rem;
-    font-weight: 400;
-    text-shadow: none;
-    text-transform: none;
-    text-decoration: none;
-    letter-spacing: normal;
-    line-height: 3.25rem;
-  }
-  & .typescale--headline {
-    font-family: var(--typeface);
-    font-size: 1.75rem;
-    font-weight: 400;
-    text-shadow: none;
-    text-transform: none;
-    text-decoration: none;
-    letter-spacing: normal;
-    line-height: 2.25rem;
-  }
-  & .typescale--title {
-    font-family: var(--typeface);
-    font-size: 1rem;
-    font-weight: 500;
-    text-shadow: none;
-    text-transform: none;
-    text-decoration: none;
-    letter-spacing: normal;
-    line-height: 1.5rem;
-  }
-  & .typescale--body {
-    font-family: var(--typeface);
-    font-size: 0.875rem;
-    font-weight: 400;
-    text-shadow: none;
-    text-transform: none;
-    text-decoration: none;
-    letter-spacing: normal;
-    line-height: 1.25rem;
-  }
-  & .typescale--label {
-    font-family: var(--typeface);
-    font-size: 0.75rem;
-    font-weight: 400;
-    text-shadow: none;
-    text-transform: none;
-    text-decoration: none;
-    letter-spacing: normal;
-    line-height: 1rem;
-  }
-
-  /* symbols */
-
-  .material-symbols {
-    font-family: "Material Symbols";
-    font-weight: normal;
-    font-style: normal;
-    font-size: 1.5rem; /* Preferred icon size */
-    display: inline-block;
-    line-height: 1;
-    text-transform: none;
-    letter-spacing: normal;
-    word-wrap: normal;
-    white-space: nowrap;
-    direction: ltr;
-  }
-
-  /* standalone text nodes */
-
-  .modal-label {
-    position: absolute;
-    inset: 0.75rem auto auto 1rem;
-    font-family: var(--typeface);
-    font-size: 0.75rem;
-    font-weight: 500;
-    text-shadow: none;
-    text-transform: none;
-    text-decoration: none;
-    letter-spacing: normal;
-    line-height: 1rem;
-  }
-
-  /* buttons */
+  /* button */
 
   .button {
     position: relative;
@@ -224,7 +286,7 @@
     & *:hover,
     & *:focus-visible {
       .button__state {
-        transition: var(--transition-on-hover);
+        transition: var(--duration--short);
         opacity: 10%;
       }
     }
@@ -241,6 +303,90 @@
     }
   }
 
+  /* checklist, radiolist */
+
+  .checklist, .radiolist{
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    margin-bottom: 0.25rem;
+    background-color: inherit;
+    color: var(--on-surface);
+    .checklist__label,
+    .radiolist__label {
+      font-family: var(--typeface);
+      font-size: 0.875rem;
+      font-weight: 400;
+      line-height: 1.25rem;
+    }
+    .checklist__item,
+    .radiolist__item {
+      position: relative;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      padding: 0.125rem 0.25rem;
+      .item__input{
+        height: 1.125rem;
+        width: 1.125rem;
+        margin: 0;
+        accent-color: var(--primary-color);
+        z-index: 1;
+        order: 0;
+      }
+      .item__label{
+        order: 1;
+        z-index: 1;
+        flex: 1;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        height: 2rem;
+        margin: 0;
+        padding-left: 0.6875rem;
+        border: 0;
+        box-shadow: none;
+        background-color: transparent;
+        color: var(--on-surface);
+        white-space: nowrap;
+        overflow: hidden;
+        font-family: var(--typeface);
+        font-size: 0.875rem;
+        font-weight: 400;
+        line-height: 1;
+      }
+      input.item__label{
+        margin-left: 0.6875rem;
+        padding: 0;
+        border-bottom: 1px dotted var(--on-surface);
+        border-radius: 0;
+      }
+      .item__state{
+        z-index: 0;
+        position: absolute;
+        inset: 0;
+        border-radius: var(--input-corner);
+        background-color: var(--state-hover);
+        opacity: 0%;
+      }
+      &:hover, :has(:hover){
+        .item__state{
+          transition: var(--duration--short);
+          opacity: 5%;
+        }
+      }
+    }
+    &.trailing-checkbox,
+    &.trailing-radio {
+      .item__input{
+        order: 1;
+      }
+      .item__label{
+        order: 1;
+      }
+    }
+  }
+
   /* text fields */
 
   .text-field {
@@ -253,7 +399,7 @@
     padding: 0.5rem;
     gap: 1rem;
     border: 0.125rem solid var(--on-surface);
-    border-radius: 0.25rem;
+    border-radius: var(--input-corner);
     background-color: inherit;
     color: var(--on-surface);
     cursor: text;
@@ -347,7 +493,7 @@
   }
 }
 
-/* a queue for children while components are assembled */
+/* assembly queue */
 
 #extension-queue {
   position: fixed;
@@ -357,7 +503,7 @@
   clip-path: inset(50%);
 }
 
-/* core components, layout */
+/* core components */
 
 #extension-dialog {
   z-index: 1033;
@@ -461,6 +607,7 @@
           color: white;
           font-size: 16px;
           font-weight: 600;
+          text-transform: capitalize;
           line-height: 24px;
         }
         .header__topline {
@@ -479,6 +626,26 @@
         position: absolute;
         inset: var(--margin) var(--margin) calc(var(--margin) * 1.5) var(--margin);
         overflow: hidden;
+
+        .excuse{
+          width: 100%;
+          display: flex;
+          flex-direction: column;
+          align-items: start;
+          padding: 96px 0 0 0;
+          gap: 16px;
+          .subject{
+            margin: 32px 0;
+            font-weight: bolder;
+          }
+          .closing{
+            margin: calc(24px) 0 0 0;
+          }
+          .esignature{
+            margin: calc(24px) 0 0 0;
+            opacity: 60%;
+          }
+        }
 
         .superbill {
           width: 100%;
