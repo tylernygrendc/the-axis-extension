@@ -963,7 +963,7 @@ const _ = {
             if(abbreviated && !(leadingDay)) return `${month.substring(0,3)} ${dd}, ${year}`;
             if(!(abbreviated) && !(leadingDay)) return `${month} ${dd}, ${year}`;
         },
-        getNumberString: (date = new Date(), model = "") => {
+        getNumberString: (date = new Date(), model = "mm/dd/yyyy") => {
             // dates come in many forms, but only some are valid
             const validModels = [
                 'yyyy-mm-dd', 'yyyy-dd-mm', 'yy-dd-mm', 'yy-mm-dd',
