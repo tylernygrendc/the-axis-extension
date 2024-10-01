@@ -1394,7 +1394,7 @@ const axis = {
                 const cmt = "CHIROPRACTIC MANIPULATIVE TREATMENT";
                 switch(spinalRegions){
                     case 0:
-                        if(extremityRegions) detailedVisits.procedure = `98943 ${cmt} (EXTRA-SPINAL)`;
+                        if(extremityRegions > 0) visitObject.procedure = `98943 ${cmt} (EXTRA-SPINAL)`;
                         else visitObject.procedure = "";
                         break;
                     case 1:
