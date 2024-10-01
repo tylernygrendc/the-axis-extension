@@ -13,16 +13,20 @@ class Child {
             if(parent instanceof HTMLElement) parent.append(child);
             if(_.type.is.string(parent)) document.querySelector(`${string}`).append(child);
         } catch(error) {
-            console.warn(error);
-            console.warn(`Could not append ${this} to ${parent}.`);
+            console.groupCollapsed(`Could not append ${this} to ${parent}.`);
+            console.error(error);
+            console.info(`appendTo() returned:`);
+            console.table(this);
+            console.groupEnd();
         } finally {
             return this;
         }
     }
     #create(){
+        let child;
         try {
-            let child = document.createElement(this.tag);
-                child.id = this.id;
+            child = document.createElement(this.tag);
+            child.id = this.id;
             for(const str of this.classList) child.classList.add(str);
             for(const [key, val] of Object.entries(this.attributes)) {
                 if(this.tag === "img" && key === "src" ) child.src = chrome.runtime.getURL(val);
@@ -32,67 +36,89 @@ class Child {
                 let text = document.createTextNode(this.innerText);
                 child.appendChild(text);
             }
-            return child;
         } catch(error){
+            child = document.createElement('div');
+            console.groupCollapsed(`Could create element from ${this}.`);
             console.error(error);
-            console.error(`Could create element from ${this}.`);
+            console.warn(`#create() returned an empty element instead:`, child);
+            console.groupEnd();
+        } finally {
+            return child;
         }
     }
     exists(){
         return this.getNode() === null ? false : true;
     }
     getAttributes(node){
+        let attributes = {};
+        const excluded = ["id", "class"];
         try{
-            if(_.type.is.string(node)) node = _.getElement(node);
-            let attributes = {}, excluded = ["id", "class"];
+            if(_.type.is.string(node)) node = document.querySelector(node);
             for(let i = 0; i < node.attributes.length; ++i){
                 if(!excluded.includes(node.attributes.item(i).name)){
                     attributes[node.attributes.item(i).name] = node.attributes.item(i).value;
                 }
             }
-            return attributes;
         } catch(error){
+            attributes = {};
+            console.groupCollapsed(`Could not get attributes of ${node}.`);
             console.error(error);
-            console.error(`Could not get attributes of node.`);
+            console.warn(`getAttributes() returned an empty object instead.`);
+            console.groupEnd();
+        } finally {
+            return attributes;
         }
-        
     }
     getNode(fallback = null){
-        return _.getElement(`#${this.id}`, fallback);
-    }
-    getElement(selector = "", fallback = null){
+        let node;
         try{
-            return this.getNode().querySelector(selector);
-        } catch (error){
-            console.warn(error);
-            return fallback;
-        }
-    }
-    getElements(selector = "", fallback = []){
-        try{
-            return this.getNode().querySelectorAll(selector);
+            node = document.querySelector(`#${this.id}`);
         } catch (error) {
-            console.warn(error);
-            return fallback;
+            node = fallback;
+            console.groupCollapsed(`Could not get node with id ${this.id}.`);
+            console.error(error);
+            console.warn(`getNode() returned ${node} instead`);
+            console.groupEnd();
+        } finally {
+            return node;
         }
     }
-    getParentNode(){
+    getParentNode(fallback = null){
+        let parentNode;
         try{
-            return this.getNode().parentElement;
+            parentNode = this.getNode().parentElement;
         } catch(error){
+            parentNode = fallback;
+            console.groupCollapsed(`Could not get parent of ${this}.`);
             console.error(error);
-            console.error(`Could not get parent of ${this}.`);
+            console.warn(`getParentNode() returned ${parentNode} instead.`);
+            console.groupEnd();
+        } finally {
+            return parentNode;
         }
     }
     objectify(node){
+        let object;
         try{
-            return this.setTag(node.tagName)
+            object = this.setTag(node.tagName)
                 .setId(node.id.length > 0 ? node.id : _.getRandomId())
                 .setClassList(node.classList)
                 .setAttribute(this.getAttributes(node));
         } catch(error){
+            object = {
+                tag: "div", 
+                id: "ab" + window.crypto.getRandomValues(new Uint32Array(1))[0].toString(16),
+                classList: [], 
+                attributes: {}, 
+                innerText: ""
+            };
+            console.groupCollapsed(`Could not coerce ${node} to object.`);
             console.error(error);
-            console.error(`Could not coerce ${node} to Child object.`);
+            console.warn(`objectify() returned ${object} instead:`);
+            console.table(object);
+            console.groupEnd();
+        } finally {
+            return object;
         }
     }
     setAttribute(object = {}){
@@ -103,17 +129,31 @@ class Child {
                 throw new Error(`Expected parameter type of object, but received ${ _.type.is.array(object) ? "array" : typeof object } instead.`);
             }
         } catch(error){
-            console.warn(error);
-            console.warn(`Could not set attribute on ${this} from ${object}.`)
+            console.groupCollapsed(`Could not set attribute on ${this} from ${object}.`);
+            console.error(error);
+            console.warn(`Attributes on ${this} were not changed.`);
+            console.info(`setAttribute() returned ${this}:`)
+            console.table(this.attributes);
+            console.groupEnd();
         } finally {
             return this;
         }
     }
     setClassList(array = []){
-        if(_.type.is.array(array)){
-            for(const str of array) this.classList.push(str);
-        } else { this.classList.push(array.toString()); }
-        return this;
+        try {
+            if(_.type.is.array(array)){
+                for(const str of array) this.classList.push(str);
+            } else { this.classList.push(array.toString()); }
+        } catch (error) {
+            console.groupCollapsed(`Could not set classList on ${this} from ${array}.`);
+            console.error(error);
+            console.warn(`Classes on ${this} were not changed.`);
+            console.info(`setClassList() returned ${this}:`)
+            console.table(this.classList);
+            console.groupEnd();
+        } finally {
+            return this;
+        }
     }
     setId(str=""){
         this.id = str;
@@ -128,44 +168,53 @@ class Child {
         return this;
     }
     update(){
-        let outdated = _.getElement(`#${this.id}`);
-        let updated = this.#create();
-        outdated.replaceWith(updated);
-        return this;
+        try{
+            let outdated = document.querySelector(`#${this.id}`);
+            let updated = this.#create();
+            outdated.replaceWith(updated);
+        } catch (error) {
+            console.groupCollapsed(`Could not update ${this}.`);
+            console.error(error);
+            console.info(`update() returned ${this}:`);
+            console.table(this);
+            console.groupEnd();
+        } finally {
+            return this;
+        }
     }
 }
 class Button extends Child {
     constructor(label = "", icon = ""){
         super();
-        this.id = _.getRandomId();
         this.classList = ["button"];
-        this.attributes = {};
         this.icon = icon;
         this.label = label;
     }
     build(parent = _.getQueue()){
-        // create the button
         let button = new Child("button")
-            .setId(this.id)
-            .setClassList(this.classList)
-            .appendTo(parent);
-        // add children button
+                .setId(this.id)
+                .setClassList(this.classList)
+                .setAttribute(this.attributes)
+                .appendTo(parent);
+        // button state indicator
         new Child("div")
             .setClassList(["button__state"])
             .appendTo(button);
+        // button label
         if(this.label.length > 0){
             new Child("span")
                 .setClassList(["button__label"])
                 .setInnerText(this.label)
                 .appendTo(button);
         }
+        // button icon
         if(this.icon.length > 0){
             new Child("span")
                 .setClassList(["button__icon"])
                 .setInnerText(this.icon)
                 .appendTo(button);
         }
-        return button;
+        return this;
     }
     setIcon(str=""){
         this.icon = str;
@@ -179,14 +228,16 @@ class Button extends Child {
 class Checklist extends Child{
     constructor(label = "", options = [], trailingCheckbox = false){
         super();
-        this.id = _.getRandomId();
         this.classList = trailingCheckbox ? ["checklist", "trailing-checkbox"] : ["checklist"];
         this.label = label;
         this.options = options;
     }
     build(parent = _.getQueue()){
-        let checklist = new Child().setId(this.id).setClassList(this.classList).appendTo(parent);
-        // add a label
+        let checklist = new Child()
+            .setId(this.id)
+            .setClassList(this.classList)
+            .appendTo(parent);
+        // add a label for the checklist
         new Child().setClassList(["checklist__label"])
             .setInnerText(this.label).appendTo(checklist);
         // create a checklist item for each option
@@ -197,26 +248,37 @@ class Checklist extends Child{
             let input = new Child("input").setClassList(["item__input"])
                 .setAttribute({type: "checkbox", name: `${option}`})
                 .appendTo(checklistItem);
-            // add a label
+            // allow "other" option to be overwritten by user
             if(option === "other"){
+                // denote "other" type in markup
                 checklistItem.getNode().dataset.itemType = "other";
+                // create a text input that serves as a label for the checklist option
                 let other = new Child("input").setClassList(["item__label"])
                     .setAttribute({type: "text", placeholder: `${option}`})
                     .appendTo(checklistItem);
+                // automatically check the option when the user interacts with it
                 other.getNode().addEventListener("focus", function () {
                     try{
                         this.parentElement.querySelector("input").checked = true;
                     } catch (error){ 
+                        console.groupCollapsed(`Could not set checked value on checkbox input.`);
                         console.error(error);
+                        console.warn(`Input#${this.id} is not selected.`, this);
+                        console.groupEnd();
                     }
                 });
+                // update the checkbox value when focus leaves the input
                 other.getNode().addEventListener("blur", function () {
                     try{
                         this.parentElement.querySelector("input").value = this.value;
                     } catch (error) {
+                        console.groupCollapsed(`Could not set value on checkbox input.`);
                         console.error(error);
+                        console.warn(`Input#${this.id} has a value of ${this.value}, which may not match the user's selection.`, this);
+                        console.groupEnd();
                     }
                 });
+                // allow for the addition of more "other" options
                 new Button("Add Other")
                     .setClassList(["outlined-button"])
                     .build(checklist)
@@ -232,6 +294,7 @@ class Checklist extends Child{
                         }
                     });
             } else {
+                // add an html label for the checklist item
                 new Child("label").setClassList(["item__label"])
                     .setAttribute({for:`${input.id}`})
                     .setInnerText(`${option}`).appendTo(checklistItem);
@@ -243,18 +306,36 @@ class Checklist extends Child{
     }
     getSelections(){
         let selection = [];
-        this.getNode().querySelectorAll("input").forEach(option => {
-            if(option.checked) selection.push(option.name);
-        });
-        return selection;
+        try {
+            this.getNode().querySelectorAll("input").forEach(option => {
+                if(option.checked) selection.push(option.name);
+            });
+        } catch (error) {
+            selection = [];
+            console.groupCollapsed(`Could not access user selection(s).`);
+            console.error(error);
+            console.warn(`getSelections() returned an empty array instead.`);
+            console.groupEnd();
+        } finally {
+            return selection;
+        }
     }
 }
 class Client {
     constructor(){
         this.clinic = this.getCurrentClinic();
-        this.oauth = localStorage.getItem("prod:SugarCRM:AuthAccessToken")
-            //? quotation marks must be removed
-            .toString().split(`"`)[1];
+        try{
+            this.clinic = this.getCurrentClinic();
+            this.oauth = localStorage.getItem("prod:SugarCRM:AuthAccessToken")
+                //? quotation marks must be removed
+                .toString().split(`"`)[1];
+        } catch (error) {
+            this.oauth = "";
+            console.groupCollapsed(`Failed to set valid oauth token.`);
+            console.error(error);
+            console.warn(`Client.oauth has been set as "${this.oauth}" instead.`)
+            console.groupEnd();
+        }
         this.username = this.getCurrentUser();
     }
     getCurrentApp(fallback = ""){
@@ -264,10 +345,11 @@ class Client {
             case "backoffice.thejoint.com":
                 return "backoffice";
             default:
-                console.warn(new Error(`Current application could not be derived from ${window.location.hostname}.`));
+                console.groupCollapsed(`Current application could not be derived from ${window.location.hostname}.`);
+                console.warn(`getCurrentApp() returned "${fallback}" instead.`);
+                console.groupEnd();
                 return fallback;
         }
-
     }
     getCurrentClinic(fallback = ""){
         try{
@@ -278,26 +360,32 @@ class Client {
                 return document.querySelector(".header-current-clinic").innerText;
             }
             if(!this.isBackOffice() && !this.isBackOffice()){
-                throw new Error(`Current clinic could not be identified because an unknown application is currently in use.`);
+                throw new Error(`An unknown application is currently in use.`);
             }
         } catch (error){
-            console.warn(error);
+            console.groupCollapsed(`Could not determine current clinic.`);
+            console.error(error);
+            console.warn(`getCurrentClinic() returned "${fallback}" instead.`);
+            console.groupEnd();
             return fallback;
         }
     }
     getFrontOfficeResource(fallback = ""){
         try{
             if(this.isFrontOffice()){
-                // Get the hash value and trim trailing directory components
+                // get the hash value and trim trailing directory components
                 // axis.thejoint.com/#Home/randomstring -> #Home/randomstring -> #Home
                 let hash = window.location.hash.split("/")[0];
-                // Format the resulting value ie. #Home -> home
+                // format the resulting value ie. #Home -> home
                 return hash.split("#")[1].toString().toLowerCase();
             } else {
-                throw new Error(`The ${this.getCurrentApp()} application is active. Expected font office application was expected.`)
+                throw new Error(`Expected "fontoffice" application, but received "${this.getCurrentApp()}" instead.`);
             }
         } catch (error){
-            console.warn(error);
+            console.groupCollapsed(`Could not determine front office resource.`);
+            console.error(error);
+            console.warn(`getFrontOfficeResource() returned "${fallback}" instead.`);
+            console.groupEnd();
             return fallback;
         }
     }
@@ -305,23 +393,30 @@ class Client {
         let username = "";
         try{
             if(this.isBackOffice()) {
-                const profileNode = document.querySelector(".username");
+                let profileNode = document.querySelector(".username");
                 if(_.type.is.string(profileNode.innerText)) username = profileNode.innerText;
-                else throw new Error(`InnerText attribute does not exist on ${profileNode}.`)
+                else throw new Error(`InnerText attribute does not exist on ${profileNode}.`);
             }
             if(this.isFrontOffice()) {
-                const profileNode = document.querySelector("#userList button");
-                if(_.type.is.string(profileNode.title)) { username = profileNode.title; }
-                else {
-                    if(_.type.is.string(profileNode.dataset.originalTitle)) username = profileNode.dataset.originalTitle;
-                    else throw new Error(`Both title and originalTitle attributes do not exist on ${profileNode}.`)
-                }
+                let profileNode = document.querySelector("#userList button");
+                let title = profileNode.title,
+                    originalTitle = profileNode.dataset.originalTitle;
+                if(_.type.is.string(title) && String(title).length > 0) username = profileNode.title;
+                if(_.type.is.string(originalTitle) && String(originalTitle).length > 0) username = profileNode.dataset.originalTitle;
+                if(username === "") throw new Error(`Both the title and data-original-title attributes are unset on ${profileNode}.`);
             }
-            if(formatted) username = _.string.capitalize(username, ".");
-            return username;
+            if(formatted) {
+                username = _.string.capitalize(username, ".");
+                if(username.substring(0,2) === "Dr") username = _.string.splice(username, 2, 0, ".");
+            }
         } catch (error){
-            console.warn(error);
-            return "";
+            username = "";
+            console.groupCollapsed(`Could not get current user.`);
+            console.error(error);
+            console.warn(`getCurrentUser() returned "${username}" instead.`);
+            console.groupEnd();
+        }finally {
+            return username;
         }
     }
     isBackOffice(){
@@ -333,10 +428,34 @@ class Client {
         else return false;
     }
 }
+class Details extends Child {
+    constructor(summaryClosed, summaryOpen){
+        super();
+        this.classList = ["details"];
+        this.summaryClosed = summaryClosed;
+        this.summaryOpen = summaryOpen;
+    }
+    build(parent = _.getQueue()){
+        let details = new Child("details")
+            .setId(this.id)
+            .setClassList(this.classList)
+            .appendTo(parent);
+        let summary = new Child("summary")
+            .setInnerText(this.summaryClosed)
+            .appendTo(details)
+            .getNode();
+        summary.dataset.summaryClosed = this.summaryClosed;
+        summary.dataset.summaryOpen = this.summaryOpen;
+        summary.addEventListener("click", function () {
+            if(this.parentElement.hasAttribute("open")) this.innerText = this.dataset.summaryClosed;
+            else this.innerText = this.dataset.summaryOpen;
+        });
+        return this;
+    }
+}
 class Textfield extends Child {
     constructor(label = "", isParagraph = false){
         super();
-        this.id = _.getRandomId();
         this.name = label;
         this.isParagraph = isParagraph;
         this.classList = ["text-field"];
@@ -369,27 +488,67 @@ class Textfield extends Child {
             .appendTo(container);
         return this;
     }
-    #getInputNode(){
-        return this.getNode().querySelector(".text-field__input");
+    #getInputNode(fallback = null){
+        let inputNode;
+        try{
+            inputNode = this.getNode().querySelector(".text-field__input");
+        } catch (error) {
+            inputNode = fallback;
+            console.groupCollapsed(`Could not get input node.`);
+            console.error(error);
+            console.warn(`#getInputNode() returned ${inputNode} instead.`);
+            console.groupEnd();
+        } finally {
+            return inputNode;
+        }
     }
-    #getHintNode(){
-        return this.getNode().querySelector(".text-field__hint");
+    #getHintNode(fallback = null){
+        let hintNode;
+        try{
+            hintNode = this.getNode().querySelector(".text-field__hint");
+        } catch (error) {
+            hintNode = fallback;
+            console.groupCollapsed(`Could not get hint node.`);
+            console.error(error);
+            console.warn(`#getHintNode() returned ${hintNode} instead.`);
+            console.groupEnd();
+        } finally {
+            return hintNode;
+        }
     }
-    #getLabelNode(){
-        return this.getNode().querySelector(".text-field__label");
+    #getLabelNode(fallback = null){
+        let labelNode;
+        try{
+            labelNode = this.getNode().querySelector(".text-field__label");
+        } catch (error) {
+            labelNode = fallback;
+            console.groupCollapsed(`Could not get label node.`);
+            console.error(error);
+            console.warn(`#getLabelNode() returned ${labelNode} instead.`);
+            console.groupEnd();
+        } finally {
+            return labelNode;
+        }
     }
     getValue(){
-        let input = this.#getInputNode();
-        switch(input.type){
-            case "date":
-                try{
-                    return new Date(`${input.value}T00:00`);
-                } catch (error) {
-                    console.warn(error);
-                    return input.value;
-                }
-            default:
-                return input.value;
+        let input = this.#getInputNode(), value = "";
+        try {
+            switch(input.type){
+                case "date":
+                    value = new Date(`${input.value}T00:00`);
+                    break;
+                default:
+                    value = input.value;
+                    break;
+            }
+        } catch (error) {
+            value = input.value;
+            console.groupCollapsed(`A problem occurred while getting the text field value.`);
+            console.error(error);
+            console.warn(`getValue() returned "${value}", which may be an unexpected value, format, or type.`);
+            console.groupEnd();
+        } finally {
+            return value;
         }
     }
     setHint(str=""){
@@ -401,15 +560,15 @@ class Textfield extends Child {
         Object.assign(this.attributes, { name: str });
         return this;
     }
-    setType(str=""){
+    setType(str="text"){
         const validTypes = ["text", "search", "email", "tel", "password", "date"];
-        if(validTypes.includes(str)) { 
-            this.type = str; 
-            Object.assign(this.attributes, { type: str });
-        }
+        if(validTypes.includes(str)) { Object.assign(this.attributes, { type: str }); }
         else { 
-            this.type = "text"; 
-            console.warn(`Invalid type attribute on input.`)
+            Object.assign(this.attributes, { type: "text" });
+            console.groupCollapsed(`Invalid type attribute on input.`);
+            console.warn(`setType() set type attribute to "text".`);
+            console.table(this.attributes);
+            console.groupEnd();
         }
         return this;
     }
@@ -437,7 +596,11 @@ class Patient {
                 throw new Error(`A patient's profile must be open to access the Patient class.`);
             }
         } catch (error){
+            console.groupCollapsed(`There was a problem constructing a new Patient().`);
             console.warn(error);
+            console.info(`Constructor output ${this}:`);
+            console.table(this);
+            console.groupEnd();
         }
     }
     getAddress(){
@@ -451,8 +614,12 @@ class Patient {
                 zip: primaryAddress.querySelector("[data-name=primary_address_postalcode]").innerText
             }
         } catch (error) {
-            console.warn(error);
             primary = {street: "", city: "", state: "", zip: ""};
+            console.groupCollapsed(`Could not get primary address.`);
+            console.warn(error);
+            console.info(`Set ${primary} to:`);
+            console.table(primary);
+            console.groupEnd();
         }
         try{
             let altAddress = document.querySelector("[data-name=alt_address]");
@@ -463,8 +630,12 @@ class Patient {
                 zip: altAddress.querySelector("[data-name=alt_address_postalcode]").innerText
             }
         } catch (error) {
-            console.warn(error);
             billing = {street: "", city: "", state: "", zip: ""};
+            console.groupCollapsed(`Could not get billing address.`);
+            console.warn(error);
+            console.info(`Set ${billing} to:`);
+            console.table(billing);
+            console.groupEnd();
         }
         return {primary: primary, billing: billing};
     }
@@ -473,8 +644,11 @@ class Patient {
         try{
             age = document.querySelector("[data-fieldname=age_c] .ellipsis_inline").innerText;
         } catch (error) {
-            console.warn(error);
             age = "";
+            console.groupCollapsed(`Could not get patient age.`);
+            console.warn(error);
+            console.info(`Set age to "${age}".`);
+            console.groupEnd();
         } finally {
             return age;
         }
@@ -484,8 +658,11 @@ class Patient {
         try{
             dob = document.querySelector("[data-fieldname=birthdate] .ellipsis_inline").innerText;
         } catch (error) {
-            console.warn(error);
             dob = "";
+            console.groupCollapsed(`Could not get date of birth.`);
+            console.warn(error);
+            console.info(`Set dob to "${dob}".`);
+            console.groupEnd();
         } finally {
             return dob;
         }
@@ -495,8 +672,11 @@ class Patient {
         try{
             email = document.querySelector("[data-name=email] a").innerText;
         } catch (error) {
-            console.warn(error);
             email = "";
+            console.groupCollapsed(`Could not get patient email.`);
+            console.warn(error);
+            console.info(`Set email to "${email}".`);
+            console.groupEnd();
         } finally {
             return email;
         }
@@ -513,7 +693,6 @@ class Patient {
             nameArray.forEach((name, i) => {
                 if(name.toLowerCase() === "see notes" || name.charAt(0) === `"`) nameArray.splice(i, 1);
             });
-        
             // consolidate multiple last names
             if(nameArray.length > 2){
                 // create a string to store the output name(s)
@@ -534,8 +713,12 @@ class Patient {
                 initials: `${nameArray[0].charAt(0) + nameArray[1].charAt(0)}`
             }
         } catch (error) {
-            console.warn(error);
             name = {fullName:"", firstName:"", lastName:"", initials:""};
+            console.groupCollapsed(`Could not get patient name.`);
+            console.warn(error);
+            console.info(`Set ${name} to:`);
+            console.table(name);
+            console.groupEnd();
         } finally {
             return name;
         }
@@ -545,8 +728,11 @@ class Patient {
         try{
             occupation = document.querySelector("[data-fieldname=occupation_c] .ellipsis_inline").dataset.originalTitle;
         } catch (error) {
-            console.warn(error);
             occupation = "";
+            console.groupCollapsed(`Could not get patient occupation.`);
+            console.warn(error);
+            console.info(`Set occupation to "${occupation}".`);
+            console.groupEnd();
         } finally{
             return occupation;
         }
@@ -556,8 +742,11 @@ class Patient {
         try{
             phone = document.querySelector("[data-fieldname=phone_mobile] a").innerText;
         } catch (error) {
-            console.warn(error);
             phone = "";
+            console.groupCollapsed(`Could not get patient phone.`);
+            console.warn(error);
+            console.info(`Set occupation to "${phone}".`);
+            console.groupEnd();
         }
         return phone;
     }
@@ -570,14 +759,13 @@ class Progressbar extends Child {
             "data-value": `${value}`
         };
         this.classList = ["progress"];
-        this.id = _.getRandomId();
         this.value = value;
     }
     build(parent = _.getQueue()){
         let container = new Child()
             .setId(this.id)
-            .setAttribute(this.attributes)
             .setClassList(this.classList)
+            .setAttribute(this.attributes)
             .appendTo(parent);
         new Child().setClassList(["progress__indicator"]).appendTo(container);
         new Child().setClassList(["progress__stop"]).appendTo(container);
@@ -587,14 +775,28 @@ class Progressbar extends Child {
         await this.setProgress(100);
         this.getNode().remove();
     }
+    #getIndicator(fallback = null){
+        let indicator;
+        try{
+            indicator = document.querySelector(`#${this.id} .progress__indicator`);
+        } catch (error) {
+            indicator = fallback;
+            console.groupCollapsed(`Could not get progress indicator element.`);
+            console.error(error);
+            console.warn(`#getIndicator() returned ${indicator} instead.`);
+            console.groupEnd();
+        } finally {
+            return indicator;
+        }
+    }
     async setProgress(percent = 0){
 
-        let a, indicator = this.getElement(".progress__indicator");
-        percent > 100 ? false : percent;
-
+        let a, indicator = this.#getIndicator();
+        percent = percent > 100 ? false : percent;
+        // cancel all existing animations on indicator
         let animationList = [];
         try{ animationList = indicator.getAnimations(); }
-        catch (error) { /* do nothing */ }
+        catch (error) { /* no animations exist on indicator */ }
         if(animationList.length > 0) {
             for(const each of animationList) {
                 each.pause();
@@ -602,9 +804,9 @@ class Progressbar extends Child {
                 each.cancel();
             };
         }
-
-        // only indeterminate progress has a right value
-        if(indicator.style.right.length > 0){
+        // if an indeterminate progress animation was active
+        if(indicator.style.right.length > 0){ //? only indeterminate progress has a "style.right" value
+            // let the animation finish and reset to 0% progress
             a = indicator.animate([
                 {left: indicator.style.left, right: indicator.style.right},
                 {left: indicator.style.left, right: "0%"},
@@ -618,13 +820,12 @@ class Progressbar extends Child {
             // reset all styles
             indicator.removeAttribute("style");
         }
-
+        // adjust the indicator bar to match progress
         const dimensions = {
             progressbar: _.getDimensions(this.getNode()),
             progressIndicator: _.getDimensions(indicator)
         }
-
-        if(percent){
+        if(percent){ // match value
             const totalWidth = dimensions.progressbar.width;
             const startWidth = dimensions.progressIndicator.width;
             const stopWidth = totalWidth * (percent / 100);
@@ -637,7 +838,7 @@ class Progressbar extends Child {
             await a.finished;
             a.commitStyles();
             a.cancel();
-        } else {
+        } else { // start indeterminate progress animation
             a = indicator.animate({
                 left: ["0%","0%","66%","100%"],
                 right: ["100%","33%","0%","0%"]
@@ -653,19 +854,20 @@ class Progressbar extends Child {
 class Radiolist extends Child{
     constructor(label = "", options = [], trailingRadio = false){
         super();
-        this.id = _.getRandomId();
         this.classList = trailingRadio ? ["radiolist", "trailing-radio"] : ["radiolist"];
         this.default = undefined;
         this.label = label;
         this.options = options;
     }
     build(parent = _.getQueue()){
-        let radiolist = new Child().setId(this.id)
-            .setClassList(this.classList).appendTo(parent);
-        // add a label
+        let radiolist = new Child()
+            .setId(this.id)
+            .setClassList(this.classList)
+            .appendTo(parent);
+        // add a label for the radio list
         new Child().setClassList(["radiolist__label"])
             .setInnerText(this.label).appendTo(radiolist);
-        // create a list item for each option
+        // create a radio list item for each option
         for(const option of this.options){
             let radiolistItem = new Child().setClassList("radiolist__item").appendTo(radiolist);
             // add a radio button
@@ -675,26 +877,36 @@ class Radiolist extends Child{
                     name: `${this.label}`, 
                     value: `${option}`
                 }).appendTo(radiolistItem);
-            // add a label
+            // allow "other" option to be overwritten by user
             if(option === "other"){
+                // create a next input that serves as a label for the radiolist option
                 let other = new Child("input").setClassList(["item__label"])
                     .setAttribute({type: "text", placeholder: `${option}`})
                     .appendTo(radiolistItem);
+                // automatically select the option when the user interacts with it
                 other.getNode().addEventListener("focus", function () {
                     try{
                         this.parentElement.querySelector("input").checked = true;
                     } catch (error){
+                        console.groupCollapsed(`Could not set checked value on radio input.`);
                         console.error(error);
+                        console.warn(`Input#${this.id} is not selected.`, this);
+                        console.groupEnd();
                     }
                 });
+                // update the radio value when focus leaves the input
                 other.getNode().addEventListener("blur", function () {
                     try{
                         this.parentElement.querySelector("input").value = this.value;
                     } catch (error){
+                        console.groupCollapsed(`Could not set value on radio input.`);
                         console.error(error);
+                        console.warn(`Input#${this.id} has a value of ${this.value}, which may not match the user's selection.`, this);
+                        console.groupEnd();
                     }
                 });
             } else {
+                // add an html label for the radio item
                 new Child("label").setClassList(["item__label"])
                     .setAttribute({for:`${input.id}`})
                     .setInnerText(`${option}`).appendTo(radiolistItem);
@@ -702,11 +914,15 @@ class Radiolist extends Child{
             // add a state indicator
             new Child().setClassList(["item__state"]).appendTo(radiolistItem);
         }
+        // if a default has been set, mark it as checked
         if(this.default != undefined) {
             try{
                 this.getNode().querySelectorAll("input")[this.default].checked = true;
             } catch (error){
-                console.warn(error);    
+                console.groupCollapsed(`Could not mark default radio option.`);
+                console.error(error);
+                console.warn(`The default selection was not marked on input#${this.id}`, this);
+                console.groupEnd();
             }
         }
         return this;
@@ -718,8 +934,11 @@ class Radiolist extends Child{
                 if(option.checked) selection = option.value;
             });
         } catch (error) {
-            console.warn(error);
             selection = fallback;
+            console.groupCollapsed(`Could not get selection.`);
+            console.error(error);
+            console.warn(`getSelection() returned ${selection} instead.`);
+            console.groupEnd();
         } finally {
             return selection;
         }
@@ -753,13 +972,27 @@ const _ = {
                 'mmddyyyy', 'ddmmyyyy', 'mmddyy', 'ddmmyy'
             ];
             // if the supplied date model is invalid, reset it
-            if(!validModels.includes(model)) model = "mm/dd/yyyy";
+            if(!validModels.includes(model)) {
+                console.groupCollapsed(`There was a problem creating the date string.`);
+                console.error(`"${model}" is an invalid model parameter on getNumberString().`)
+                console.info(`getNumberString() requires a model parameter matching one of the following:`);
+                console.table(validModels);
+                model = "mm/dd/yyyy";
+                console.warn(`The model parameter defaulted "${model}".`);
+                console.groupEnd();
+            }
     
             // check that the date parameter is also valid
             // try coercing invalid parameters to dates first
             if(!date instanceof Date) date = new Date(date);
-            // if the parameter can't be coerced, throw an error
-            if(date == "Invalid Date") throw new Error(`Method getNumberString() at dateTime requires a valid date parameter.`)
+            // log the date parameter as-is if it cannot be coerced
+            if(date == "Invalid Date") {
+                console.groupCollapsed(`Could not create date string.`);
+                console.error(`getNumberString() requires a valid date parameter.`);
+                console.warn(`getNumberString() returned ${date}.`);
+                console.groupEnd();
+                return date;
+            }
     
             // format the supplied date
             let year = new Date(date).getFullYear(),
@@ -786,25 +1019,38 @@ const _ = {
             for(const str of strArray) modelString += str;
             // rearrange the string if the date or year leads
             let numberString = `${month}${delimiter}${date}${delimiter}${year}`;
-            if(modelString.charAt(0) === "d") numberString = `${date}${delimiter}${month}${delimiter}${year}`;
-            if(modelString.charAt(0) === "y" && modelString.charAt(year.length) === "m") 
+            // date, month, year
+            if(modelString.charAt(0) === "d") {
+                numberString = `${date}${delimiter}${month}${delimiter}${year}`;
+            }
+            // year, month, date
+            if(modelString.charAt(0) === "y" && modelString.charAt(year.length) === "m") {
                 numberString = `${year}${delimiter}${month}${delimiter}${date}`;
-            if(modelString.charAt(0) === "y" && modelString.charAt(year.length) === "d") 
+            }
+            // year, date, month
+            if(modelString.charAt(0) === "y" && modelString.charAt(year.length) === "d") {
                 numberString = `${year}${delimiter}${date}${delimiter}${month}`;
+            }
     
             return numberString;
         }
     },
     duplicateNode: (node) => {
+        let clone;
         try{
-            let clone = node.cloneNode(true);
-                clone.id = _.getRandomId();
+            clone = node.cloneNode(true);
+            clone.id = _.getRandomId();
             clone.querySelectorAll("*").forEach(child => {
                 child.id = _.getRandomId();
             });
-            return clone;
         } catch (error) {
+            clone = document.createElement("div");
+            console.groupCollapsed(`Could not duplicate ${node}.`);
             console.error(error);
+            console.warn(`duplicateNode() returned ${clone} instead.`, clone);
+            console.groupEnd();
+        } finally {
+            return clone;
         }
     },
     getDimensions: (node) => {
@@ -814,7 +1060,6 @@ const _ = {
             // convert height and width to number values
             height = parseFloat(height.split("p")[0]);
             width = parseFloat(width.split("p")[0]);
-
         return {
             content: {
                 height: Math.ceil(node.scrollHeight),
@@ -830,20 +1075,6 @@ const _ = {
         for(var i = 0; i < 4; ++i) leadingLetters += letters[Math.floor(Math.random() * 26)];
         let cryptoString = window.crypto.getRandomValues(new Uint32Array(1))[0].toString(16);
         return leadingLetters + cryptoString;
-    },
-    getElement: (selector = "", fallback = null) => {
-        try{
-            return document.querySelector(selector);
-        } catch (err){
-            return fallback;
-        }
-    },
-    getElements: (selector = "", fallback = []) => {
-        try{
-            return document.querySelectorAll(selector);
-        } catch (err) {
-            return fallback;
-        }
     },
     showPlaceValues: (number = 0, quantity = 2) => {
         // the number parameter can be typeof string or number
@@ -863,7 +1094,7 @@ const _ = {
             return `${str[0]}.${str[1].substring(0, quantity)}`;
         }
     },
-    string: {
+    string:{
         capitalize: (string, delimiter = " ") => {
             let capitalized = "";
             string.split(delimiter).forEach((str, i) => {
@@ -871,12 +1102,18 @@ const _ = {
                 else `${str.charAt(0).toUpperCase() + str.slice(1)}`;
             })
             return capitalized;
+        },
+        splice: (string = "", start = 0, deleteCount = 0, item = "") => {
+            let array = [...string], spliced = "";
+                array.splice(start, deleteCount, item);
+            for(const char of array) spliced += char;
+            return spliced;
         }
     },
     type: {
         array: (array, fallback = []) => {
             try{ 
-                if(_.type.is.array(array)) return array;
+                if(_.type.is.array(array)) return array; //!
                 else throw {name: "TypeError", message: "Parameter is not type of array."};
             } catch (error) { console.warn(error); return fallback;}
         },
@@ -936,10 +1173,15 @@ const _ = {
         }
     },
     getQueue: () => {
-        let queue = _.getElement("#extension-queue", null);
-        if(queue === null) queue = new Child().setId("extension-queue")
-            .appendTo(document.body).getNode();
-        return queue;
+        let queue;
+        try{
+            queue = document.querySelector("#extension-queue");
+            if(queue === null) queue = new Child().setId("extension-queue").appendTo(document.body).getNode();
+        } catch (error) {
+            console.warn(error);
+        } finally {
+            return queue;
+        }
     }
 }
 const animation = {
@@ -1009,7 +1251,7 @@ const animation = {
         a.commitStyles();
         a.cancel();
         if(slideIn) return node;
-        else node.remove(0);
+        else node.remove();
     }
 }
 const axis = {
@@ -1185,8 +1427,12 @@ const axis = {
             if(_.type.is.object(visit[0])){
                 treatingPhysician = `Dr. ${visit[0].users_tj_visits_2_name}`;
             } else {/* Cannot validate visit. */ throw new Error(`Expected type of object but received ${typeof visit[0]} instead.`, true); }
-        } catch(error){ console.error(error); treatingPhysician = ""; }
-
+        } catch(error){ 
+            console.error(error); 
+            let currentUser = new Client().getCurrentUser(true);
+            treatingPhysician = currentUser.substring(0, 2) === "Dr" ? currentUser : ""; 
+            console.warn(`There are no visits matching the selected date: ${date}.`);
+        }
         let excuseBody = [];
 
         excuseBody.push(new Child().setClassList(["date"]).setInnerText(`${_.dateTime.getDateString()}`).appendTo());
@@ -1210,6 +1456,8 @@ const axis = {
         excuseBody.push(new Child().setClassList(["signature"]).setInnerText(treatingPhysician).appendTo());
         if(treatingPhysician != "" /* visit was validated */){
             excuseBody.push(new Child().setClassList(["esignature"]).setInnerText(`Electronically signed on ${new Date()}.`).appendTo());
+        } else {
+            excuseBody.push(new Child().setClassList(["esignature"]).setInnerText(`[Invalid without doctor's signature.]`).appendTo());
         }
 
         return excuseBody;
@@ -1401,7 +1649,6 @@ const axis = {
         try{
             const patient = new Patient();
             endDate = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59, 999);
-            console.log(startDate, endDate);
             // the visits api calls a certain number of visits, starting with the most recent visit
             // set the max_num query equal to the difference between present and startDate
             let maxNum = Math.ceil((_.dateTime.endOfToday.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
@@ -1485,15 +1732,20 @@ const ui = {
                 .build(dialog)
                 .getNode().addEventListener("click", async function (e) {
                     e.preventDefault();
-                    animation.fade(dialog.getNode(), false);
+                    await animation.fade(dialog.getNode(), false);
                 });
+            // create a body section for the dialog
+            let dialogBody = new Child("div")
+                .setClassList(["body"])
+                .appendTo(dialog)
+                .getNode();
             // populate the dialog body
             for(const obj of body){
-                if(obj instanceof Child) dialog.getNode().append(obj.getNode());
-                if(obj instanceof HTMLElement) dialog.getNode().append(obj);
+                if(obj instanceof Child) dialogBody.append(obj.getNode());
+                if(obj instanceof HTMLElement) dialogBody.append(obj);
             }
-            // show dialog (animation.fade of)
-            animation.fade(dialog.getNode(), true);
+            // show dialog
+            await animation.fade(dialog.getNode(), true);
         },
         list: (content = [], editable = { label: false,  value: false}) => {
             // this method accepts an array of objects and outputs an unordered list
@@ -1533,11 +1785,9 @@ const ui = {
             // create a header for the page
             let header = new Child().setClassList(["page__header"])
                 .appendTo(page).getNode();
-    
             // create a body for the page
             let body = new Child('div').setClassList(["page__body"])
                 .appendTo(page).getNode();
-    
             // create a footer for the page
             let footer = new Child().setClassList(["page__footer"])
                 .appendTo(page).getNode();
@@ -1552,11 +1802,16 @@ const ui = {
             new Child("h1").setInnerText(title)
                 .setClassList(["header__title"])
                 .appendTo(header);
-            // clinic details are not always complete :(
+            //? clinic details are not always complete :(
             if(clinicDetails.pc.length > 1 && clinicDetails.bussiness_entity.length > 1){
                 new Child("span").setClassList(["header__topline"])
                     .setInnerText(`This clinic is owned and operated by ${clinicDetails.pc} and managed by ${clinicDetails.bussiness_entity}.`)
                     .appendTo(header);
+            } else {
+                console.groupCollapsed(`Could not populate header topline.`);
+                console.info(`The "pc" and "bussiness_entity" [sic] attributes are not set on clinicDetails.`)
+                console.table(clinicDetails);
+                console.groupEnd();
             }
         
             // populate the footer with this clinic's name, address, phone, and email
@@ -1571,29 +1826,45 @@ const ui = {
         },
         preview: (page = {}, bodyContent = [], classList = []) => {
             // create a preview container
-            let preview = new Child("div").setId("extension-preview").setClassList(["extension-variables", "extension-surface"]).appendTo().getNode();
-    
+            let preview = new Child("div")
+                .setId("extension-preview")
+                .setClassList(["extension-variables", "extension-surface"])
+                .appendTo().getNode();
             // add print options to the preview
-            let printButton = new Button("Print Preview").setClassList(["surface-button", "fab"]).build(preview);
-            // 
-            window.addEventListener("beforeprint", () => {
-                // fix the preview height
-                preview.style.height = `${_.getDimensions(preview).content.height}px`;
-                // move the preview to the body
-                document.body.append(preview);
-            });
-            window.addEventListener("afterprint", () => {
-                // reset the preview height
-                preview.removeAttribute("style");
-                // move the preview to the sheet
-                ui.getSheet().append(preview);
-            });
+            let printButton = new Button("Print Preview")
+                .setClassList(["surface-button", "fab"])
+                .build(preview);
             // print the preview when the print button is clicked
             printButton.getNode().addEventListener("click", () => {
                 // actually print the preview
                 window.print();
             });
-            
+            window.addEventListener("beforeprint", () => {
+                let previewNode;
+                try{
+                    previewNode = document.querySelector(`#extension-preview`);
+                    preview.style.height = `${_.getDimensions(previewNode).content.height}px`;
+                    document.body.append(previewNode);
+                } catch (error) {
+                    console.groupCollapsed(`A problem occurred while preparing to print.`);
+                    console.error(error);
+                    console.groupEnd();
+                }
+            });
+            window.addEventListener("afterprint", () => {
+                let previewNode;
+                console.log(preview);
+                try{
+                    previewNode = document.querySelector(`#extension-preview`);
+                    previewNode.removeAttribute("style");
+                    ui.getSheet().append(previewNode);
+                } catch (error) {
+                    console.groupCollapsed(`There was a problem resetting the print preview.`);
+                    console.error(error);
+                    console.groupEnd();
+                }
+            });
+
             // and append the page to the preview
             preview.append(page.node);
     
@@ -1614,15 +1885,26 @@ const ui = {
                     // append the modified duplicate to the preview
                     preview.append(clone);
                     // subsequent pages shouldn't have a header
-                    new Child().objectify(clone).getElement(".page__header", {remove:()=>{}}).remove();
-                    // shift the body content to show overflow from the previous page
-                    new Child().objectify(clone).getElement(".page__body > div", {style:{transform: null}}).style.transform = `translateY(-${((header.height * i) + (body.height * (i + 1)))}px`;
+                    try{
+                        clone.querySelector(".page__header").remove();
+                    } catch (error) {
+                        console.groupCollapsed(`Could not remove the page header.`)
+                        console.warn(error);
+                        console.groupEnd();
+                    }
+                    try{
+                        clone.querySelector(".page__body > div").style.transform = `translateY(-${((header.height * i) + (body.height * (i + 1)))}px`;
+                    } catch (error) {
+                        console.groupCollapsed(`Could not transform body content.`)
+                        console.warn(error);
+                        console.groupEnd();
+                    }
                 }
             }
             
             return preview;
         },
-        sheet: (body = []) => {
+        sheet: async (body = []) => {
             let sheet = new Child("div")
                 .setId(["extension-sheet"])
                 .setClassList(["extension-variables", "extension-surface"])
@@ -1640,45 +1922,44 @@ const ui = {
                 .getNode().addEventListener("click", async function (e) {
                     e.preventDefault();
                     // slide sheet out to right
-                    animation.slide(sheet.getNode(), "right", false);
+                    await animation.slide(sheet.getNode(), "right", false);
                 });
             // populate the sheet body
             for(const obj of body){
                 if(obj instanceof Child) sheet.getNode().append(obj.getNode());
                 if(obj instanceof HTMLElement) sheet.getNode().append(obj);
             }
-            // slide the sheet of from right
-            animation.slide(sheet.getNode(), "right", true);
+            // slide the sheet out from right
+            await animation.slide(sheet.getNode(), "right", true);
             return sheet;
         },
         table: (content = [], filter = [], wrapContent = false, editable = false) => {
             // this function accepts an array of objects and outputs a semantic html table
+            //* create the table
             let table = new Child("table").appendTo();
-    
             // if there is no content, just return the table
             if(!content.length) return table.getNode();
-    
+
             // a filter can be specified to only output specified key values
-            // if the filter is an empty array or falsy, this filter should default to all keys on the first object
-            if(!filter.length || filter){
-                for(const [key, val] of Object.entries(content[0])) filter.push(key);
-            }
-            // create a table header
+            // if the filter is an empty array or falsy, this filter should default to all keys on the first object in content
+            if(!filter.length || filter) for(const [key, val] of Object.entries(content[0])) filter.push(key); 
+
+            //* create the table header
             let thead = new Child("thead").appendTo(table);
             // add a row to the table head
             let headerRow = new Child("tr").appendTo(thead);
             // populate the header with each key of filter
             for(const key of filter) new Child("th").setInnerText(key).appendTo(headerRow);
-    
-            // create a table body
+
+            //* create the table body
             let tbody = new Child("tbody").appendTo(table);
             // for each object of content
             for(const obj of content){
-                //create a row
+                // create a new row and append it to the body
                 let row = new Child("tr").appendTo(tbody);
                 // for each key of filter
                 for(const key of filter){
-                    // populate the cell with the key value
+                    // populate the cell
                     let value = obj[key];
                     // values need to be strings
                     if(typeof value != "string") value = value.toString();
@@ -1691,34 +1972,36 @@ const ui = {
                     // make the cell editable if it should be
                     if(editable) new Child("input").setAttribute({value: value}).appendTo(cell);
                     else cell.getNode().innerText = value;
-                    // ! this will create some cells in a column that are wider than others
                 }
             }
-    
-            // adjust cell widths
-            // create an array representing the index of every wide column
-            let wideColumns = [];
-            // for each row in the table
-            table.getElements("tr").forEach(row => {
-                row = new Child().objectify(row);
-                row.getElements("td").forEach((cell, i) => {
-                    // check if the cell is part of a wide column and store the index of that column
-                    // only store indices that haven't been stored already
-                    if(cell.classList.contains("column--wide") && !wideColumns.includes(i)) wideColumns.push(i);
+            // the resulting table will have some cells wider than others
+            // * adjust cell widths   
+            try{
+                // create an array representing the index of every wide column
+                let wideColumns = [];
+                // for each row in the table
+                document.querySelectorAll(`#${table.id} tr`).forEach(row => {
+                    document.querySelectorAll(`#${row.id} td`).forEach((cell, i) => {
+                        // check if the cell is part of a wide column and store the index of that column
+                        // only store indices that haven't been stored already
+                        if(cell.classList.contains("column--wide") && !wideColumns.includes(i)) wideColumns.push(i);
+                    });
                 });
-            });
-            // style headers for wide columns
-            table.getElements("thead tr th").forEach((header, i) => {
-                if(wideColumns.includes(i)) header.classList.add("column--wide");
-            })
-            // style cells for wide columns
-            table.getElements("tr").forEach(row => {
-                row = new Child().objectify(row);
-                row.getElements("td").forEach((cell, i) => {
-                    if(wideColumns.includes(i)) cell.classList.add("column--wide");
+                // style headers for wide columns
+                document.querySelectorAll(`#${table.id} thead tr th`).forEach((header, i) => {
+                    if(wideColumns.includes(i)) header.classList.add("column--wide");
+                })
+                // style cells for wide columns
+                document.querySelectorAll(`#${table.id} tr`).forEach(row => {
+                    document.querySelectorAll(`#${row.id} td`).forEach((cell, i) => {
+                        if(wideColumns.includes(i)) cell.classList.add("column--wide");
+                    });
                 });
-            });
-    
+            } catch (error) {
+                console.groupCollapsed(`Could not resize table cells.`);
+                console.error(error);
+                console.groupEnd();
+            }
             return table.getNode();
         }
     },
@@ -1726,19 +2009,41 @@ const ui = {
         node.innerHtml = "";
     },
     getDialog: (fallback = null) => {
-        return _.getElement("#extension-dialog", fallback);
+        let dialog;
+        try{
+            dialog = document.querySelector("#extension-dialog");
+        } catch (error) {
+            dialog = fallback;
+            console.groupCollapsed(`Could not get dialog element.`);
+            console.error(error);
+            console.warn(`getDialog() returned ${dialog} instead.`)
+            console.groupEnd();
+        } finally {
+            return dialog;
+        }
     },
     getSheet: (fallback = null) => {
-        return _.getElement("#extension-sheet", fallback);
+        let sheet;
+        try{
+            sheet = document.querySelector("#extension-sheet");
+        } catch (error) {
+            sheet = fallback;
+            console.groupCollapsed(`Could not get sheet element.`);
+            console.error(error);
+            console.warn(`getSheet() returned ${sheet} instead.`)
+            console.groupEnd();
+        } finally {
+            return sheet;
+        }
     },
     isActive: () =>{
         if(ui.getDialog() === null && ui.getSheet() === null) return false;
         else return true;
     },
-    reset: () => {
-        const dialog = ui.getDialog(), sheet = ui.getSheet();
-        if(dialog != null) animation.fade(dialog, false);
-        if(sheet != null) animation.slide(sheet, "right", false);
+    reset: async () => {
+        let dialog = ui.getDialog(), sheet = ui.getSheet();
+        if(dialog != null) await animation.fade(dialog, false);
+        if(sheet != null) await animation.slide(sheet, "right", false);
         ui.empty(_.getQueue());
     }
 }
@@ -1750,14 +2055,19 @@ new Child("style").setInnerText(`@font-face{font-family: "Roboto Flex"; src: url
 chrome.runtime.onMessage.addListener(function(message, sender, response){
     // access the source of the message
     if(message.source === "action"){
+        let client = new Client();
         if(ui.isActive()){
             ui.reset();
         } else {
-            if(new Client().isFrontOffice()){
-                switch(new Client().getFrontOfficeResource()){
+            if(client.isFrontOffice()){
+                switch(client.getFrontOfficeResource()){
                     case "contacts":
                         // * create the superbill generator
-                        let superbillTool = new Child().setClassList().appendTo();
+                        let superbillTool = new Child().setClassList(["feature"]).appendTo();
+
+                        // add a tool label
+                        new Child("span").setClassList(["typescale--label"])
+                            .setInnerText("Superbill Generator").appendTo(superbillTool);
     
                         // create a date range selector
                         let superbillDateRange = new Child().setClassList(["flex-row"])
@@ -1775,15 +2085,19 @@ chrome.runtime.onMessage.addListener(function(message, sender, response){
                             .build(superbillTool)
                             .getNode().addEventListener("click", async function (e){
                                 e.preventDefault();
+                                // grab user inputs
+                                let startDate = startDateTextfield.getValue(),
+                                    endDate = endDateTextfield.getValue();
                                 // remove the dialog
-                                animation.fade(ui.getDialog(), false);
+                                await animation.fade(ui.getDialog(), false);
                                 // build a sheet for the superbill
-                                let sheet = ui.build.sheet().getNode();
+                                let sheet = await ui.build.sheet()
+                                    sheet = sheet.getNode();
                                 // show progress indicator
                                 let progressbar = new Progressbar().build(sheet)
                                     progressbar.setProgress(0);
                                 // get the superbill body content
-                                let bodyContent = await axis.getSuperbillBody(startDateTextfield.getValue(), endDateTextfield.getValue());
+                                let bodyContent = await axis.getSuperbillBody(startDate, endDate);
                                 // create a page to contain the superbill body
                                 let page = await ui.build.page("Superbill", ["tjc-document"]);
                                 // update the progressbar to show complete
@@ -1798,25 +2112,39 @@ chrome.runtime.onMessage.addListener(function(message, sender, response){
 
                         const patient = new Patient();
     
-                        let excuseTool = new Child("div").setClassList().appendTo();
+                        let excuseTool = new Child("div").setClassList(["feature"]).appendTo();
+
+                        // add a tool label
+                        new Child("span").setClassList(["typescale--label"])
+                            .setInnerText("Excuse Slip Generator").appendTo(excuseTool);
+
+                        // allow the user to set the date to be excused
                         let excuseDate = new Textfield("Visit Date")
                             .setValue(`${_.dateTime.getNumberString(new Date(), 'yyyy-mm-dd')}`)
                             .setType("date").build(excuseTool);
+                        
+                        // add a collapsible container to details
+                        let excuseDetails = new Details("Edit excuse details...", "Hide excuse details...").build(excuseTool);
+                        // allow the user to set the type of excuse
                         let excuseType = new Radiolist("This is a...", [
                             "work excuse", 
                             "school excuse"
-                        ]).setDefault(patient.age < 18 ? 1 : 0).build(excuseTool);
+                        ]).setDefault(patient.age < 18 ? 1 : 0).build(excuseDetails);
+                        // allow the user to set activity modifications
                         let modifications = new Checklist("This patient should...", [
                             "limit sitting for periods longer than 60 minutes",
                             "limit standing for periods longer than 60 minutes",
                             "limit lifting greater than 15 pounds",
                             "other"
-                        ]).build(excuseTool);
+                        ]).build(excuseDetails);
+                        // allow the user to set a return to play timeline
                         let returnToPlay = new Radiolist("Resume activities...", [
                             "immediately",
                             "in three days",
                             "other"
-                        ]).setDefault(0).build(excuseTool);
+                        ]).setDefault(0).build(excuseDetails);
+
+                        // create a button to print the excuse slip
                         new Button("Print Excuse Letter")
                             .setClassList(["surface-button", "width--full"])
                             .build(excuseTool)
@@ -1827,11 +2155,11 @@ chrome.runtime.onMessage.addListener(function(message, sender, response){
                                 excuseType = excuseType.getSelection();
                                 modifications = modifications.getSelections();
                                 returnToPlay = returnToPlay.getSelection();
-
                                 // remove the dialog
-                                animation.fade(ui.getDialog(), false);
+                                await animation.fade(ui.getDialog(), false);
                                 // build a sheet for the release
-                                let sheet = ui.build.sheet().getNode();
+                                let sheet = await ui.build.sheet();
+                                    sheet = sheet.getNode();
                                 // show progress indicator
                                 let progressbar = new Progressbar().build(sheet)
                                     progressbar.setProgress(0);
@@ -1861,7 +2189,7 @@ chrome.runtime.onMessage.addListener(function(message, sender, response){
                         break;
                 }
             }
-            if(new Client().isBackOffice()){
+            if(client.isBackOffice()){
                 
             }
         }
