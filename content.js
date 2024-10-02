@@ -1533,8 +1533,8 @@ const axis = {
                 Date: _.dateTime.getNumberString(transaction.date_entered), 
                 Purchase: transaction.product_purchased, 
                 Method: transaction.cc_type === "Cash" ? "Cash" : `${transaction.cc_type} (${transaction.last_four})`, 
-                Payment: transaction.type === "Refund/Void" ? 0 : transaction.amount, 
-                Refund: transaction.type === "Refund/Void" ? transaction.amount : 0
+                Payment: transaction.type === "Refund/Void" ? "0.00" : transaction.amount, 
+                Refund: transaction.type === "Refund/Void" ? transaction.amount : "0.00"
             });
         }
         let problemList = []
@@ -1553,7 +1553,7 @@ const axis = {
                 Date: _.dateTime.getNumberString(visit.date_entered), 
                 Procedure: visit.procedure, 
                 Charge: _.showPlaceValues(visit.visitCost, 2), 
-                Physician: visit.users_tj_visits_2_name, 
+                Physician: `${visit.users_tj_visits_2_name}, DC`, 
                 Location: visit.tj_clinics_tj_visits_1_name
             });
         }
