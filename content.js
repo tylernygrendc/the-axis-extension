@@ -259,22 +259,21 @@ class Checklist extends Child{
                 // automatically check the option when the user interacts with it
                 other.getNode().addEventListener("focus", function () {
                     try{
-                        this.parentElement.querySelector("input").checked = true;
+                        this.parentElement.querySelector("input[type=checkbox]").checked = true;
                     } catch (error){ 
                         console.groupCollapsed(`Could not set checked value on checkbox input.`);
                         console.error(error);
-                        console.warn(`Input#${this.id} is not selected.`, this);
                         console.groupEnd();
                     }
                 });
                 // update the checkbox value when focus leaves the input
                 other.getNode().addEventListener("blur", function () {
                     try{
-                        this.parentElement.querySelector("input").value = this.value;
+                        this.parentElement.querySelector("input[type=checkbox]").name = this.value;
                     } catch (error) {
-                        console.groupCollapsed(`Could not set value on checkbox input.`);
+                        console.groupCollapsed(`Could not assign name on checkbox input.`);
                         console.error(error);
-                        console.warn(`Input#${this.id} has a value of ${this.value}, which may not match the user's selection.`, this);
+                        console.warn(`Name value may not match the user's selection.`, this.parentElement);
                         console.groupEnd();
                     }
                 });
@@ -287,10 +286,37 @@ class Checklist extends Child{
                         try{
                             let originalOther = this.parentElement.querySelector("[data-item-type=other]");
                             let cloneOther = _.duplicateNode(originalOther);
-                            cloneOther.value = "";
-                            this.parentNode.insertBefore(cloneOther, originalOther);
+                            let otherCheckbox = cloneOther.querySelector("input[type=checkbox]"),
+                                otherLabel = cloneOther.querySelector("input[type=text]");
+                            otherCheckbox.name = "";
+                            otherLabel.value = "";
+                            otherLabel.placeholder = "other";
+                            this.parentNode.insertBefore(cloneOther, this);
+                            // automatically check the option when the user interacts with it
+                            otherLabel.addEventListener("focus", function () {
+                                try{
+                                    this.parentElement.querySelector("input[type=checkbox]").checked = true;
+                                } catch (error){ 
+                                    console.groupCollapsed(`Could not set checked value on checkbox input.`);
+                                    console.error(error);
+                                    console.groupEnd();
+                                }
+                            });
+                            // update the checkbox value when focus leaves the input
+                            otherLabel.addEventListener("blur", function () {
+                                try{
+                                    this.parentElement.querySelector("input[type=checkbox]").name = this.value;
+                                } catch (error) {
+                                    console.groupCollapsed(`Could not assign name on checkbox input.`);
+                                    console.error(error);
+                                    console.warn(`Name value may not match the user's selection.`, this.parentElement);
+                                    console.groupEnd();
+                                }
+                            });
                         } catch (error) {
+                            console.groupCollapsed(`Could not add "other" checkbox.`);
                             console.error(error);
+                            console.groupEnd();
                         }
                     });
             } else {
@@ -307,7 +333,7 @@ class Checklist extends Child{
     getSelections(){
         let selection = [];
         try {
-            this.getNode().querySelectorAll("input").forEach(option => {
+            this.getNode().querySelectorAll("input[type=checkbox]").forEach(option => {
                 if(option.checked) selection.push(option.name);
             });
         } catch (error) {
@@ -531,7 +557,7 @@ class Textfield extends Child {
         }
     }
     getValue(){
-        let input = this.#getInputNode(), value = "";
+        let input = this.#getInputNode(), value;
         try {
             switch(input.type){
                 case "date":
@@ -1113,9 +1139,16 @@ const _ = {
     type: {
         array: (array, fallback = []) => {
             try{ 
-                if(_.type.is.array(array)) return array; //!
-                else throw {name: "TypeError", message: "Parameter is not type of array."};
-            } catch (error) { console.warn(error); return fallback;}
+                if(_.type.is.array(array)) return array;
+                else throw new Error(`Expected an array but received ${typeof array} instead.`);
+            } catch (error) { 
+                console.groupCollapsed(`Parameter is not an array.`);
+                console.warn(error);
+                console.info(`array() returned ${fallback} instead.`)
+                console.table(fallback);
+                console.groupEnd();
+                return fallback;
+            }
         },
         is: {
             array: (thing) => {
@@ -1156,20 +1189,39 @@ const _ = {
         number: (number, fallback = 0) => {
             try{ 
                 if(_.type.is.number(number)) return number;
-                else throw {name: "TypeError", message: "Parameter is not type of number."};
-            } catch (error) { console.warn(error); return fallback; }
+                else throw new Error(`Expected type of "number" but received type of "${typeof number}" instead.`);
+            } catch (error) { 
+                console.groupCollapsed(`Parameter is not a type of number.`);
+                console.warn(error);
+                console.info(`number() returned ${fallback} instead.`);
+                console.groupEnd();
+                return fallback; 
+            }
         },
         object: (object, fallback = {}) => {
             try{ 
                 if(_.type.is.object(object)) return object;
-                else throw {name: "TypeError", message: "Parameter is not type of object."};
-            } catch (error) { console.warn(error); return fallback; }
+                else throw new Error(`Expected type of "object" but received type of "${typeof object}" instead.`);
+            } catch (error) { 
+                console.groupCollapsed(`Parameter is not a type of object.`);
+                console.warn(error);
+                console.info(`object() returned ${fallback} instead.`);
+                console.table(fallback);
+                console.groupEnd();
+                return fallback; 
+            }
         },
         string: (string, fallback = "") => {
             try{ 
                 if(_.type.is.string(string)) return string;
-                else throw {name: "TypeError", message: "Parameter is not type of string."};
-            } catch (error) { console.warn(error); return fallback; }
+                else throw new Error(`Expected type of "string" but received type of "${typeof string}" instead.`);
+            } catch (error) {
+                console.groupCollapsed(`Parameter is not a type of string.`);
+                console.warn(error);
+                console.info(`string() returned "${fallback}" instead.`)
+                console.groupEnd();
+                return fallback; 
+            }
         }
     },
     getQueue: () => {
@@ -1178,7 +1230,10 @@ const _ = {
             queue = document.querySelector("#extension-queue");
             if(queue === null) queue = new Child().setId("extension-queue").appendTo(document.body).getNode();
         } catch (error) {
-            console.warn(error);
+            console.groupCollapsed(`Could not get #extension-queue.`);
+            console.error(error);
+            console.warn(`getQueue() returned ${queue} instead.`);
+            console.groupEnd();
         } finally {
             return queue;
         }
@@ -1287,7 +1342,13 @@ const axis = {
             // process second request and return detailed clinic information
             if(secondResponse.ok) return await secondResponse.json(); 
             else throw `${secondResponse.status} ${secondResponse.statusText}`;
-        } catch (error) { console.error(error); return {}; }
+        } catch (error) { 
+            console.groupCollapsed(`Could not get clinic details.`);
+            console.error(error);
+            console.warn(`getClinicDetails() returned an empty object instead.`);
+            console.groupEnd();
+            return {}; 
+        }
     },
     getDetailedVisits: async (startDate = _.dateTime.presentYearStart, endDate = _.dateTime.endOfToday) => {
         try{
@@ -1414,25 +1475,44 @@ const axis = {
             // return detailed visit information
             return detailedVisits;
     
-        } catch (error){ console.error(error); return []; }
+        } catch (error){ 
+            console.groupCollapsed(`Could not get detailed visits.`);
+            console.error(error);
+            console.warn(`getDetailedVisits() returned an empty array instead.`);
+            console.groupEnd();
+            return []; 
+        }
     },
     getExcuseBody: async (date = _.dateTime.startOfToday, modifications = [], returnToPlay = "immediately") => {
-
+        // validate parameters
         if(_.type.isNot.array(modifications)) modifications = [];
-
+        // and establish constants
         const patient = new Patient();
-        let visit, treatingPhysician = "";
-        try{
-            visit = await axis.getVisits(date);
-            if(_.type.is.object(visit[0])){
-                treatingPhysician = `Dr. ${visit[0].users_tj_visits_2_name}`;
-            } else {/* Cannot validate visit. */ throw new Error(`Expected type of object but received ${typeof visit[0]} instead.`, true); }
-        } catch(error){ 
-            console.error(error); 
-            let currentUser = new Client().getCurrentUser(true);
-            treatingPhysician = currentUser.substring(0, 2) === "Dr" ? currentUser : ""; 
-            console.warn(`There are no visits matching the selected date: ${date}.`);
+
+        // get the physician's name from the visit record
+        let visits = await axis.getVisits(date),
+            visitExists = false, 
+            treatingPhysician = "",
+            dateEntered;
+        for(const visit of visits) {
+            dateEntered = new Date(visit.date_entered);
+            dateEntered = new Date(dateEntered.getFullYear(), dateEntered.getMonth(), dateEntered.getDate(), 0, 0, 0, 0);
+            if(dateEntered.toDateString() === date.toDateString()){
+                visitExists = true;
+                treatingPhysician = `Dr. ${visit.users_tj_visits_2_name}`;
+            }
         }
+        if(!visitExists) {
+            let currentUser = new Client().getCurrentUser(true);
+            treatingPhysician = currentUser.substring(0, 2) === "Dr" ? currentUser : "";
+            console.groupCollapsed(`Could not set treatingPhysician.`);
+            console.error(`There are no visits from ${date}.`);
+            console.warn(`This problem might be the result of an incomplete visit. The parameter treatingPhysician has been set to "${treatingPhysician}".`);
+            console.groupEnd();
+        }
+
+        // create the excuse body
+
         let excuseBody = [];
 
         excuseBody.push(new Child().setClassList(["date"]).setInnerText(`${_.dateTime.getDateString()}`).appendTo());
@@ -1476,7 +1556,13 @@ const axis = {
         try{
             transactions = await axis.getTransactions(startDate, endDate);
             visits = await axis.getVisits(startDate, endDate);
-        } catch (error) { console.error(error); return []; }
+        } catch (error) { 
+            console.groupCollapsed(`Could not get superbill body.`);
+            console.error(error);
+            console.warn(`getSuperbillBody() returned an empty array instead.`);
+            console.groupEnd();
+            return []; 
+        }
     
         // the statement body includes three lists: meta info, patient info, and an account summary
 
@@ -1642,8 +1728,16 @@ const axis = {
                 let obj = await response.json();
                 return obj.records;
             }
-            else { throw `status: ${response.status}`; }
-        } catch (error){ console.error(error); return {}; }
+            else { 
+                throw new Error(`Fetch() returned status "${response.status}".`); 
+            }
+        } catch (error){ 
+            console.groupCollapsed(`Could not get transactions.`);
+            console.error(error);
+            console.warn(`getTransactions() returned an empty object instead.`);
+            console.groupEnd();
+            return {}; 
+        }
     }, 
     getVisits: async (startDate = _.dateTime.presentYearStart, endDate = _.dateTime.endOfToday) => {
         try{
@@ -1853,7 +1947,6 @@ const ui = {
             });
             window.addEventListener("afterprint", () => {
                 let previewNode;
-                console.log(preview);
                 try{
                     previewNode = document.querySelector(`#extension-preview`);
                     previewNode.removeAttribute("style");
