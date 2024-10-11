@@ -29,7 +29,10 @@
         "fonts/MaterialSymbols.woff2",
         "fonts/RobotoFlex.ttf"
         ],
-      "matches": [ "https://axis.thejoint.com/*" ]
+      "matches": [ 
+        "https://axis.thejoint.com/*",
+        "https://backoffice.thejoint.com"
+      ]
     }
   ]
 }
