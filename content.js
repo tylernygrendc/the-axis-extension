@@ -1569,15 +1569,14 @@ const axis = {
         // some of these list item values need to be calculated
         let paid = 0, billed = 0, refunded = 0;
         for(const transaction of transactions){
-            if(transaction.type === "Refund/Void") paid -= parseFloat(transaction.amount);
-            else paid += parseFloat(transaction.amount);
-        }
-        for(const transaction of transactions){
-            if(transaction.type != "Refund/Void") billed += parseFloat(transaction.amount);
-            else billed += parseFloat(transaction.amount);
-        }
-        for(const transaction of transactions){
-            if(transaction.type === "Refund/Void") refunded +=  parseFloat(transaction.amount);
+            if(transaction.status != "DECLINED") {
+                if(transaction.type === "Refund/Void"){
+                    refunded +=  parseFloat(transaction.amount);
+                } else if(transaction.type != "Refund/Void") {
+                    paid += parseFloat(transaction.amount);
+                    billed += parseFloat(transaction.amount);
+                }
+            }
         }
 
         // put these lists into an array for convenience
@@ -1615,13 +1614,17 @@ const axis = {
         let transactionTableContent = [], problemTableContent = [], visitTableContent = [];
         // the content of these tables needs to be populated before a table can be generated
         for(const transaction of transactions){
-            transactionTableContent.push({
-                Date: _.dateTime.getNumberString(transaction.date_entered), 
-                Purchase: transaction.product_purchased, 
-                Method: transaction.cc_type === "Cash" ? "Cash" : `${transaction.cc_type} (${transaction.last_four})`, 
-                Payment: transaction.type === "Refund/Void" ? "0.00" : transaction.amount, 
-                Refund: transaction.type === "Refund/Void" ? transaction.amount : "0.00"
-            });
+            if(transaction.status === "DECLINED"){
+                // do nothing
+            } else {
+                transactionTableContent.push({
+                    Date: _.dateTime.getNumberString(transaction.date_entered), 
+                    Purchase: transaction.product_purchased, 
+                    Method: transaction.cc_type === "Cash" ? "Cash" : `${transaction.cc_type} (${transaction.last_four})`, 
+                    Payment: transaction.type === "Refund/Void" ? "0.00" : transaction.amount, 
+                    Refund: transaction.type === "Refund/Void" ? transaction.amount : "0.00"
+                });
+            }
         }
         let problemList = []
         for(const visit of visits){

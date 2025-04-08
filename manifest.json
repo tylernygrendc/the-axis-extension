@@ -3,7 +3,7 @@
     "name": "The AXIS Extension",
     "description": "Simplify and extend The Joint's electronic systems.",
     "author": "tylernygren@gmail.com",
-    "version": "0.30",
+    "version": "0.31",
     "action": {
         "default_icon": "assets/action-icon.png",
         "default_title": "The AXIS Extension"
